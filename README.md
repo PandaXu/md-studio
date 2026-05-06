@@ -1,6 +1,6 @@
 # Mermaid 编辑与预览
 
-Vue 3 + Vite 的本地工具：Monaco 编辑源码、防抖预览 Mermaid 图，预览主题可在 **`default` / `dark` / `forest`** 间点击切换（与规格一致）。主题选择会写入 `localStorage`。
+Vue 3 + Vite 的本地工具：Monaco 编辑源码、防抖预览 Mermaid 图，预览主题可在 **`default` / `dark` / `forest` / `enterprise`** 间点击切换；其中 **`enterprise`** 为自定义「运维架构图」风格（浅灰底、浅蓝节点、黑线黑字、直角，见 `src/themes.ts`）。主题选择会写入 `localStorage`。
 
 ## 需求与规格
 
