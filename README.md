@@ -2,6 +2,8 @@
 
 Vue 3 + Vite 的本地工具：Monaco 编辑源码、防抖预览 Mermaid 图，预览主题可在 **`default` / `dark` / `forest` / `enterprise`** 间点击切换；其中 **`enterprise`** 为自定义「运维架构图」风格（浅灰底、浅蓝节点、黑线黑字、直角，见 `src/themes.ts`）。主题选择会写入 `localStorage`。
 
+顶栏提供 **视图布局** 下拉：**左右并列**、**仅代码**、**仅预览图**（写入 `localStorage`）；**导出 SVG** 会下载当前预览中的矢量图（无可用图时会提示）。
+
 ## 需求与规格
 
 见 [docs/superpowers/specs/2026-05-06-mermaid-editor-design.md](docs/superpowers/specs/2026-05-06-mermaid-editor-design.md)。

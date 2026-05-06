@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import mermaid from 'mermaid'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import SourceEditor from './components/SourceEditor.vue'
 import {
   MERMAID_THEMES,
@@ -10,6 +10,34 @@ import {
   type MermaidThemeId,
 } from './themes'
 
+type LayoutMode = 'split' | 'code' | 'preview'
+
+const LAYOUT_OPTIONS: { value: LayoutMode; label: string }[] = [
+  { value: 'split', label: '左右并列' },
+  { value: 'code', label: '仅 Mermaid 代码' },
+  { value: 'preview', label: '仅预览图' },
+]
+
+const LAYOUT_STORAGE_KEY = 'mermaid-editor-layout'
+
+function loadStoredLayout(): LayoutMode {
+  try {
+    const v = localStorage.getItem(LAYOUT_STORAGE_KEY)
+    if (v === 'split' || v === 'code' || v === 'preview') return v
+  } catch {
+    /* ignore */
+  }
+  return 'split'
+}
+
+function persistLayout(mode: LayoutMode) {
+  try {
+    localStorage.setItem(LAYOUT_STORAGE_KEY, mode)
+  } catch {
+    /* ignore */
+  }
+}
+
 const DEFAULT_SAMPLE = `flowchart LR
   A[开始] --> B{判断}
   B -->|是| C[结束]
@@ -18,6 +46,7 @@ const DEFAULT_SAMPLE = `flowchart LR
 const source = ref(DEFAULT_SAMPLE)
 const debouncedSource = ref(DEFAULT_SAMPLE)
 const theme = ref<MermaidThemeId>(loadStoredTheme() ?? 'default')
+const layout = ref<LayoutMode>(loadStoredLayout())
 const previewHost = ref<HTMLElement | null>(null)
 
 const previewError = ref<string | null>(null)
@@ -96,6 +125,47 @@ function loadSample() {
   source.value = DEFAULT_SAMPLE
   debouncedSource.value = DEFAULT_SAMPLE
 }
+
+watch(layout, (mode) => {
+  persistLayout(mode)
+  void nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
+
+function exportSvg() {
+  const host = previewHost.value
+  const svgEl = host?.querySelector('svg')
+  let serialized: string | null = null
+
+  if (svgEl) {
+    const clone = svgEl.cloneNode(true) as SVGSVGElement
+    if (!clone.getAttribute('xmlns')) {
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    }
+    serialized = new XMLSerializer().serializeToString(clone)
+  } else if (lastOkSvg.value) {
+    serialized = lastOkSvg.value.includes('xmlns=')
+      ? lastOkSvg.value
+      : lastOkSvg.value.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')
+  }
+
+  if (!serialized?.trim()) {
+    window.alert('当前没有可导出的图形，请先编写能通过解析的 Mermaid 代码。')
+    return
+  }
+
+  const blob = new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `mermaid-${Date.now()}.svg`
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
 </script>
 
 <template>
@@ -117,19 +187,33 @@ function loadSample() {
           {{ t.id }}
         </button>
       </div>
-      <button type="button" class="ghost-btn" @click="loadSample">载入示例</button>
+      <div class="toolbar-actions">
+        <label class="field-inline">
+          <span class="field-label">视图布局</span>
+          <select v-model="layout" class="select" aria-label="视图布局">
+            <option v-for="o in LAYOUT_OPTIONS" :key="o.value" :value="o.value">
+              {{ o.label }}
+            </option>
+          </select>
+        </label>
+        <button type="button" class="primary-btn" @click="exportSvg">导出 SVG</button>
+        <button type="button" class="ghost-btn" @click="loadSample">载入示例</button>
+      </div>
     </header>
 
-    <p class="hint">当前主题：<strong>{{ activeThemeLabel }}</strong>（已写入 localStorage）</p>
+    <p class="hint">
+      当前主题：<strong>{{ activeThemeLabel }}</strong>（已写入 localStorage）；布局：
+      <strong>{{ LAYOUT_OPTIONS.find((o) => o.value === layout)?.label }}</strong>
+    </p>
 
-    <main class="main">
-      <section class="pane editor-pane" aria-label="源码编辑">
+    <main class="main" :class="`layout-${layout}`">
+      <section v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
         <h2 class="pane-title">源码</h2>
         <div class="pane-body">
           <SourceEditor v-model="source" />
         </div>
       </section>
-      <section class="pane preview-pane" aria-label="预览">
+      <section v-show="layout !== 'code'" class="pane preview-pane" aria-label="预览">
         <h2 class="pane-title">预览</h2>
         <div v-if="previewError" class="error-banner" role="alert">
           {{ previewError }}
@@ -262,6 +346,71 @@ body {
   color: var(--accent);
 }
 
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+@media (min-width: 720px) {
+  .toolbar-actions {
+    width: auto;
+    flex: 0 0 auto;
+  }
+}
+
+.field-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.field-label {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.select {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  min-width: 10rem;
+  cursor: pointer;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.primary-btn {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.primary-btn:hover {
+  filter: brightness(1.05);
+}
+
+.primary-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .hint {
   margin: 0.5rem 0 0;
   font-size: 0.8125rem;
@@ -270,14 +419,27 @@ body {
 
 .main {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 1rem;
   margin-top: 1rem;
   min-height: calc(100vh - 8rem);
 }
 
+.main.layout-split {
+  grid-template-columns: 1fr 1fr;
+}
+
+.main.layout-code,
+.main.layout-preview {
+  grid-template-columns: 1fr;
+}
+
+.main.layout-code .editor-pane,
+.main.layout-preview .preview-pane {
+  min-height: calc(100vh - 10rem);
+}
+
 @media (max-width: 900px) {
-  .main {
+  .main.layout-split {
     grid-template-columns: 1fr;
     min-height: auto;
   }
