@@ -3,11 +3,12 @@
 | 项目 | 内容 |
 |------|------|
 | 文档类型 | 需求说明 + 设计概要（初版） |
-| 状态 | Draft，待评审确认 |
+| 状态 | **已定稿**（决策齐备，待实现计划与编码） |
 | 关联仓库 | `mermaid`（当前为空项目） |
 | 前端框架 | **Vue 3**（构建工具建议 Vite + `create-vue` 或等价脚手架） |
 | 首版部署 | **仅本地开发**：`npm run dev` 即可；不要求静态托管（如 GitHub Pages） |
 | 源码编辑器 | **Monaco Editor**（`monaco-editor`）；Vite 下 **按需 worker**（如 `vite-plugin-monaco-editor`，或等价 `MonacoEnvironment.getWorker` 配置），避免全量打包各语言 worker |
+| 预览主题 | **无品牌定制**。首版至少 3 种，采用 Mermaid 内置 **`default`**（浅）、**`dark`**、**`forest`**；可在 `initialize` 的 `themeVariables` 中微调对比度，无需单独命名「品牌色」 |
 
 ---
 
@@ -76,7 +77,7 @@
 
 | ID | 描述 | 优先级 |
 |----|------|--------|
-| FR-TH-01 | 内置**不少于 3 种**预览主题（例如：默认浅色、深色、高对比或品牌中性色等，具体命名与色板在实现阶段确定） | P0 |
+| FR-TH-01 | 内置**不少于 3 种**预览主题；首版固定为 Mermaid 内置 **`default`** / **`dark`** / **`forest`**，无品牌色约束（实现阶段可微调 `themeVariables`） | P0 |
 | FR-TH-02 | 用户通过**点击**界面控件（如主题 chips、下拉、或主题列表）切换主题 | P0 |
 | FR-TH-03 | 切换主题**不修改** Mermaid 源码；仅改变预览层样式变量或 Mermaid 支持的 `theme`/`themeVariables` 等配置 | P0 |
 | FR-TH-04 | 当前选中主题在 UI 上有明确选中态 | P1 |
@@ -122,7 +123,7 @@
 - **单页布局**：左侧或上方为编辑器，右侧或下方为预览；主题切换为顶栏或预览区上方的**可点击主题控件**（Vue 组件实现）。
 - **编辑器组件**：独立 Vue 组件封装 Monaco（`onMounted` 创建 `editor.create`，`onBeforeUnmount` `dispose`）；与父组件通过 `v-model` 式 props/emit 或暴露 `getValue()` 同步字符串；**Worker**：在应用入口或该组件初始化前配置 `self.MonacoEnvironment` / 使用 `vite-plugin-monaco-editor`，确保 `json`/`editor` 等 worker 从独立 chunk 加载。
 - **数据流**：`ref`/`reactive` 保存编辑器文本 → 防抖（可选手写 `setTimeout` 或 `@vueuse/core` 的 `useDebounceFn`）→ `mermaid.parse` / `render` → 注入预览 DOM；主题 ID 变更 → 重新 `initialize` 或更新主题变量 → 对同一源码重新渲染。
-- **主题模型**：`ThemeId` 枚举 + 每主题一份 `{ mermaidTheme, cssVariables }` 映射表；切换时更新状态并触发重绘。
+- **主题模型**：`ThemeId` 枚举（首版对应 **`default` | `dark` | `forest`**）+ 每主题一份 `{ mermaidTheme, themeVariables? }` 映射表；切换时更新状态并触发重绘。
 - **错误处理**：try/catch 包裹渲染；展示 `error.message` 或友好映射文案；必要时用 `<Suspense>` 或独立错误子组件展示（按实现复杂度选用）。
 
 *详细接口与文件结构在通过本需求评审后，由 `writing-plans` 产出实现计划。*
@@ -148,11 +149,11 @@
 
 ---
 
-## 10. 待确认项（需产品/你方确认）
+## 10. 决策摘要（均已确认）
 
-1. **部署形态**（**已确认**）：首版仅需本地 `npm run dev` 开发运行；不将「可部署静态站点」纳入首版验收范围（后续若需要再加 `vite build` 与托管说明即可）。
-2. **默认主题集**：是否有品牌色或必须包含的命名主题？
-3. **编辑器增强**（**已确认**）：采用 **Monaco Editor** + Vite 下 **按需 worker**（见文档信息表与 FR-ED-05）；不采用原生 `<textarea>` 作为主编辑实现。
+1. **部署形态**：首版仅需本地 `npm run dev`；不要求静态托管验收项。
+2. **默认主题集**（**已确认**）：**无特殊要求**；首版采用 Mermaid 内置 **`default`**、**`dark`**、**`forest`** 三种可点击切换，不引入品牌色板。
+3. **编辑器增强**：**Monaco Editor** + Vite **按需 worker**；不以 `<textarea>` 作为主编辑实现。
 
 ---
 
@@ -164,3 +165,4 @@
 | 2026-05-06 | 0.2 | 技术选型：前端统一为 **Vue 3 + Vite**；补充与 Mermaid 集成与防抖的实现说明 |
 | 2026-05-06 | 0.3 | 部署：**已确认**首版仅本地 `npm run dev`，不要求静态托管 |
 | 2026-05-06 | 0.4 | 编辑器：**已确认** Monaco Editor + 按需 worker；补充 FR-ED-05、架构与验收项 |
+| 2026-05-06 | 0.5 | 主题：**已确认**无品牌要求；首版 `default` / `dark` / `forest`；文档状态改为已定稿 |
