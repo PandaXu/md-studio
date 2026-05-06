@@ -371,6 +371,8 @@ function exportHtml() {
   --md-bg: #f9fafb;
   --md-border: #e5e7eb;
   --md-code-bg: #f3f4f6;
+  --md-line-height: 1.7;
+  --md-heading-line: 1.28;
   background: var(--md-bg);
   color: var(--md-text);
 }
@@ -381,54 +383,158 @@ function exportHtml() {
   --md-bg: #1f2937;
   --md-border: #374151;
   --md-code-bg: #111827;
+  --md-line-height: 1.72;
+  --md-heading-line: 1.3;
   background: var(--md-bg);
   color: var(--md-text);
 }
 
-.markdown-body :deep(h1),
-.markdown-body :deep(h2),
+.markdown-body {
+  font-size: 0.9375rem;
+  line-height: var(--md-line-height, 1.7);
+}
+
+.markdown-body :deep(h1) {
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.35rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: var(--md-heading-line, 1.28);
+  border-bottom: 1px solid var(--md-border);
+}
+
+.markdown-body :deep(h2) {
+  margin: 1.75rem 0 0.65rem;
+  font-size: 1.25rem;
+  font-weight: 650;
+  line-height: var(--md-heading-line, 1.28);
+}
+
+.markdown-body :deep(h2:first-child),
+.markdown-body :deep(h1 + h2) {
+  margin-top: 0.35rem;
+}
+
 .markdown-body :deep(h3) {
-  margin: 0.75rem 0 0.35rem;
-  line-height: 1.25;
+  margin: 1.35rem 0 0.5rem;
+  font-size: 1.0625rem;
+  font-weight: 650;
+  line-height: var(--md-heading-line, 1.28);
+}
+
+.markdown-body :deep(h4),
+.markdown-body :deep(h5),
+.markdown-body :deep(h6) {
+  margin: 1.1rem 0 0.4rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: var(--md-heading-line, 1.28);
+  color: var(--md-text);
 }
 
 .markdown-body :deep(p) {
-  margin: 0.5rem 0;
+  margin: 0 0 0.9rem;
+  line-height: inherit;
+}
+
+.markdown-body :deep(p:last-child) {
+  margin-bottom: 0;
 }
 
 .markdown-body :deep(a) {
   color: var(--accent, #2563eb);
 }
 
+.markdown-body :deep(blockquote) {
+  margin: 0.85rem 0;
+  padding: 0.35rem 0 0.35rem 1rem;
+  border-left: 3px solid var(--md-border);
+  color: var(--md-muted);
+  line-height: inherit;
+}
+
+.markdown-body :deep(blockquote p) {
+  margin: 0.35rem 0;
+}
+
+.markdown-body :deep(hr) {
+  margin: 1.35rem 0;
+  border: none;
+  border-top: 1px solid var(--md-border);
+}
+
 .markdown-body :deep(table) {
   border-collapse: collapse;
   width: 100%;
-  margin: 0.75rem 0;
+  margin: 1rem 0;
   font-size: 0.875rem;
+  line-height: 1.55;
 }
 
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
   border: 1px solid var(--md-border);
-  padding: 0.35rem 0.5rem;
+  padding: 0.45rem 0.6rem;
+  vertical-align: top;
+}
+
+.markdown-body :deep(th) {
+  font-weight: 600;
 }
 
 .markdown-body :deep(ul),
 .markdown-body :deep(ol) {
-  padding-left: 1.25rem;
+  margin: 0.5rem 0 0.9rem;
+  padding-left: 1.35rem;
+  line-height: inherit;
+}
+
+.markdown-body :deep(li) {
+  margin: 0.28rem 0;
+  padding-left: 0.15rem;
+}
+
+.markdown-body :deep(li > p) {
+  margin: 0.35rem 0;
+}
+
+.markdown-body :deep(ul ul),
+.markdown-body :deep(ol ol),
+.markdown-body :deep(ul ol),
+.markdown-body :deep(ol ul) {
+  margin: 0.35rem 0 0.5rem;
 }
 
 .markdown-body :deep(pre) {
+  margin: 0.85rem 0;
   background: var(--md-code-bg);
-  padding: 0.75rem;
+  padding: 0.85rem 1rem;
   border-radius: 6px;
   overflow: auto;
   font-size: 0.8125rem;
+  line-height: 1.55;
 }
 
 .markdown-body :deep(code) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.9em;
+}
+
+.markdown-body :deep(p code),
+.markdown-body :deep(li code),
+.markdown-body :deep(td code),
+.markdown-body :deep(th code) {
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+  background: var(--md-code-bg);
+  font-size: 0.88em;
+}
+
+.markdown-body :deep(pre code) {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: inherit;
 }
 
 .markdown-body :deep(.mermaid-block) {
