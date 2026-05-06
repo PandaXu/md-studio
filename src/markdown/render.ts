@@ -12,7 +12,7 @@ md.renderer.rules.fence = (tokens, idx, options, env, self) => {
   const info = (token.info || '').trim().split(/\s+/)[0] ?? ''
   if (info === 'mermaid') {
     const escaped = md.utils.escapeHtml(token.content)
-    return `<div class="mermaid-block"><pre class="mermaid-source">${escaped}</pre><div class="mermaid-out"></div><div class="mermaid-error" role="alert"></div></div>\n`
+    return `<div class="mermaid-block"><details class="mermaid-source-details"><summary class="mermaid-source-summary">Mermaid 源码（点击展开 / 收起）</summary><pre class="mermaid-source">${escaped}</pre></details><div class="mermaid-out"></div><div class="mermaid-error" role="alert"></div></div>\n`
   }
   return defaultFence(tokens, idx, options, env, self)
 }

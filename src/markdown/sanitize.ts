@@ -33,6 +33,8 @@ const CONFIG: Config = {
     'div',
     'span',
     'input',
+    'details',
+    'summary',
   ],
   ALLOWED_ATTR: [
     'href',

@@ -246,7 +246,7 @@ function exportHtml() {
       out.innerHTML = '<p>图表未渲染成功</p>'
     }
     block.querySelector('.mermaid-error')?.remove()
-    block.querySelector('pre.mermaid-source')?.remove()
+    block.querySelector('details.mermaid-source-details')?.remove()
   })
 
   const style = reading.value === 'dark' ? EXPORT_CSS_DARK : EXPORT_CSS_LIGHT
@@ -433,6 +433,34 @@ function exportHtml() {
 
 .markdown-body :deep(.mermaid-block) {
   margin: 1rem 0;
+}
+
+.markdown-body :deep(details.mermaid-source-details) {
+  margin: 0 0 0.5rem;
+  border: 1px solid var(--md-border);
+  border-radius: 6px;
+  background: var(--md-code-bg);
+  overflow: hidden;
+}
+
+.markdown-body :deep(summary.mermaid-source-summary) {
+  cursor: pointer;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--md-muted);
+  user-select: none;
+  list-style-position: outside;
+}
+
+.markdown-body :deep(summary.mermaid-source-summary:hover) {
+  color: var(--accent, #2563eb);
+}
+
+.markdown-body :deep(details.mermaid-source-details pre.mermaid-source) {
+  margin: 0;
+  border-top: 1px solid var(--md-border);
+  border-radius: 0 0 6px 6px;
 }
 
 .markdown-body :deep(.mermaid-error) {
