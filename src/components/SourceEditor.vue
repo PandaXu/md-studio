@@ -2,9 +2,13 @@
 import * as monaco from 'monaco-editor'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-const props = defineProps<{
-  modelValue: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: string
+    language?: string
+  }>(),
+  { language: 'plaintext' },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -13,11 +17,15 @@ const emit = defineEmits<{
 const host = ref<HTMLElement | null>(null)
 let editor: monaco.editor.IStandaloneCodeEditor | null = null
 
+type ITextModelWithSetLanguage = monaco.editor.ITextModel & {
+  setLanguageId(languageId: string): void
+}
+
 onMounted(() => {
   if (!host.value) return
   editor = monaco.editor.create(host.value, {
     value: props.modelValue,
-    language: 'plaintext',
+    language: props.language,
     theme: 'vs',
     automaticLayout: true,
     minimap: { enabled: false },
@@ -41,6 +49,14 @@ watch(
       editor.setValue(v)
       if (pos) editor.setPosition(pos)
     }
+  },
+)
+
+watch(
+  () => props.language,
+  (lang) => {
+    if (!editor) return
+    ;(editor.getModel() as ITextModelWithSetLanguage | null)?.setLanguageId(lang)
   },
 )
 
