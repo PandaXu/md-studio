@@ -27,7 +27,7 @@ npm run dev
 
 ## 技术说明
 
-- **Monaco**：在 `src/main.ts` 最先加载 `src/monaco-env.ts`，通过 Vite 的 `?worker` 仅引入 **editor worker**；源码模式为 `plaintext`。
+- **Monaco**：使用 **`vite-plugin-monaco-editor`**（见 `vite.config.ts`），`languageWorkers` 仅保留 **`editorWorkerService`**，与 `plaintext` 编辑需求一致；插件在 `index.html` 中注入 `MonacoEnvironment.getWorkerUrl`。
 - **Mermaid**：`mermaid.initialize` 随主题更新；`parse` + `render`；渲染失败时保留上一次成功 SVG，并在预览区上方显示错误信息。
 
 ## 浏览器

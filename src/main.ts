@@ -1,4 +1,3 @@
-import './monaco-env'
 import { createApp } from 'vue'
 import App from './App.vue'
 
