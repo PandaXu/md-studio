@@ -7,6 +7,7 @@
 | 关联仓库 | `mermaid`（当前为空项目） |
 | 前端框架 | **Vue 3**（构建工具建议 Vite + `create-vue` 或等价脚手架） |
 | 首版部署 | **仅本地开发**：`npm run dev` 即可；不要求静态托管（如 GitHub Pages） |
+| 源码编辑器 | **Monaco Editor**（`monaco-editor`）；Vite 下 **按需 worker**（如 `vite-plugin-monaco-editor`，或等价 `MonacoEnvironment.getWorker` 配置），避免全量打包各语言 worker |
 
 ---
 
@@ -56,10 +57,11 @@
 
 | ID | 描述 | 优先级 |
 |----|------|--------|
-| FR-ED-01 | 提供多行文本编辑区，用于输入与修改 Mermaid 源码 | P0 |
-| FR-ED-02 | 支持常见编辑操作：输入、删除、撤销/重做（若平台原生支持可依赖浏览器/组件） | P1 |
+| FR-ED-01 | 提供多行编辑区，用于输入与修改 Mermaid 源码（实现为 Monaco 实例） | P0 |
+| FR-ED-02 | 支持常见编辑操作：输入、删除、撤销/重做（Monaco 内置） | P1 |
 | FR-ED-03 | 语法错误时，在预览区或独立区域展示可读错误信息（文案或 Mermaid 返回信息） | P0 |
 | FR-ED-04 | （可选）从空白模板或示例图一键载入，降低上手成本 | P2 |
+| FR-ED-05 | 使用 **Monaco Editor** + **按需 worker**：仅加载所需 editor worker（Vite 构建可验证 chunk 拆分）；首版语言模式可用纯文本或 Markdown 等轻量模式，**不强制**首版接入 Mermaid 语言服务 | P0 |
 
 ### 4.2 预览（FR-PV）
 
@@ -93,7 +95,7 @@
 
 | 类别 | 要求 |
 |------|------|
-| 性能 | 常规图（例如少于 500 行）防抖后渲染交互流畅；避免无防抖的逐键全量解析 |
+| 性能 | 常规图（例如少于 500 行）防抖后渲染交互流畅；避免无防抖的逐键全量解析；Monaco 与 worker 按需加载，首屏可接受（实现阶段可记录冷启动大致耗时） |
 | 兼容性 | 明确目标：最新两个版本的 Chrome / Edge / Firefox / Safari 桌面端（实现阶段可收窄并写入 README） |
 | 可访问性 | 主题切换控件可被键盘聚焦与操作（P1） |
 | 安全 | 若未来支持从 URL 拉取内容，需考虑 XSS/开放重定向等风险（本阶段可标为后续） |
@@ -111,13 +113,14 @@
 | B. 桌面壳（Electron/Tauri） | 内嵌 WebView 与 A 类似 | 离线体验好、可挂系统菜单 | 体积与发布成本高 |
 | C. VS Code / Cursor 扩展 | 在编辑器侧预览 | 与写文档工作流一体 | 分发与审核流程更重 |
 
-**推荐**：方案 **A（Web SPA）**，前端采用 **Vue 3 + Vite**；在空仓库中从零初始化（官方 `npm create vue@latest` 或团队等价模板）。`mermaid` 以 npm 依赖在浏览器端渲染；主题通过 Mermaid `initialize` / `themeVariables` 与预览容器 CSS 变量组合实现点击切换。与 Vue 的衔接方式：用响应式状态保存源码与当前 `ThemeId`，预览区用 `ref` 挂载容器，在 `watch` 或防抖回调中调用 `mermaid.run` / `render` 并处理错误边界。
+**推荐**：方案 **A（Web SPA）**，前端采用 **Vue 3 + Vite**；在空仓库中从零初始化（官方 `npm create vue@latest` 或团队等价模板）。`mermaid` 以 npm 依赖在浏览器端渲染；主题通过 Mermaid `initialize` / `themeVariables` 与预览容器 CSS 变量组合实现点击切换。与 Vue 的衔接方式：用响应式状态保存源码与当前 `ThemeId`，预览区用 `ref` 挂载容器，在 `watch` 或防抖回调中调用 `mermaid.run` / `render` 并处理错误边界。源码编辑区采用 **Monaco Editor**，并通过 Vite 插件或 `MonacoEnvironment` **按需加载 worker**。
 
 ---
 
 ## 7. 架构与设计概要（初版）
 
 - **单页布局**：左侧或上方为编辑器，右侧或下方为预览；主题切换为顶栏或预览区上方的**可点击主题控件**（Vue 组件实现）。
+- **编辑器组件**：独立 Vue 组件封装 Monaco（`onMounted` 创建 `editor.create`，`onBeforeUnmount` `dispose`）；与父组件通过 `v-model` 式 props/emit 或暴露 `getValue()` 同步字符串；**Worker**：在应用入口或该组件初始化前配置 `self.MonacoEnvironment` / 使用 `vite-plugin-monaco-editor`，确保 `json`/`editor` 等 worker 从独立 chunk 加载。
 - **数据流**：`ref`/`reactive` 保存编辑器文本 → 防抖（可选手写 `setTimeout` 或 `@vueuse/core` 的 `useDebounceFn`）→ `mermaid.parse` / `render` → 注入预览 DOM；主题 ID 变更 → 重新 `initialize` 或更新主题变量 → 对同一源码重新渲染。
 - **主题模型**：`ThemeId` 枚举 + 每主题一份 `{ mermaidTheme, cssVariables }` 映射表；切换时更新状态并触发重绘。
 - **错误处理**：try/catch 包裹渲染；展示 `error.message` 或友好映射文案；必要时用 `<Suspense>` 或独立错误子组件展示（按实现复杂度选用）。
@@ -133,6 +136,7 @@
 - [ ] 至少 3 种主题可切换，且为点击操作。
 - [ ] 切换主题后无需改源码即可看到样式变化。
 - [ ] 当前主题在 UI 上可辨识。
+- [ ] Monaco 可正常编辑；构建产物中 worker 为按需拆分（非单文件塞入全部 worker）。
 
 ---
 
@@ -148,7 +152,7 @@
 
 1. **部署形态**（**已确认**）：首版仅需本地 `npm run dev` 开发运行；不将「可部署静态站点」纳入首版验收范围（后续若需要再加 `vite build` 与托管说明即可）。
 2. **默认主题集**：是否有品牌色或必须包含的命名主题？
-3. **编辑器增强**：首版在 Vue 内是否需要 Monaco/CodeMirror（如 `monaco-editor` + 按需 worker），还是原生 `<textarea>` 即可？
+3. **编辑器增强**（**已确认**）：采用 **Monaco Editor** + Vite 下 **按需 worker**（见文档信息表与 FR-ED-05）；不采用原生 `<textarea>` 作为主编辑实现。
 
 ---
 
@@ -159,3 +163,4 @@
 | 2026-05-06 | 0.1 | 初稿：基于「编辑 + 预览 + 多主题点击切换」整理需求与设计概要 |
 | 2026-05-06 | 0.2 | 技术选型：前端统一为 **Vue 3 + Vite**；补充与 Mermaid 集成与防抖的实现说明 |
 | 2026-05-06 | 0.3 | 部署：**已确认**首版仅本地 `npm run dev`，不要求静态托管 |
+| 2026-05-06 | 0.4 | 编辑器：**已确认** Monaco Editor + 按需 worker；补充 FR-ED-05、架构与验收项 |
