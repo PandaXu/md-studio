@@ -4,7 +4,8 @@
 |------|------|
 | 文档类型 | 需求说明 + 设计概要（初版） |
 | 状态 | Draft，待评审确认 |
-| 关联仓库 | `mermaid`（当前为空项目，技术栈未定） |
+| 关联仓库 | `mermaid`（当前为空项目） |
+| 前端框架 | **Vue 3**（构建工具建议 Vite + `create-vue` 或等价脚手架） |
 
 ---
 
@@ -109,16 +110,16 @@
 | B. 桌面壳（Electron/Tauri） | 内嵌 WebView 与 A 类似 | 离线体验好、可挂系统菜单 | 体积与发布成本高 |
 | C. VS Code / Cursor 扩展 | 在编辑器侧预览 | 与写文档工作流一体 | 分发与审核流程更重 |
 
-**推荐**：方案 **A（Web SPA）**，在空仓库中从零用 Vite + React/Vue 或纯 TS 均可；主题通过 Mermaid 初始化配置 + 预览容器 CSS 变量组合实现点击切换。
+**推荐**：方案 **A（Web SPA）**，前端采用 **Vue 3 + Vite**；在空仓库中从零初始化（官方 `npm create vue@latest` 或团队等价模板）。`mermaid` 以 npm 依赖在浏览器端渲染；主题通过 Mermaid `initialize` / `themeVariables` 与预览容器 CSS 变量组合实现点击切换。与 Vue 的衔接方式：用响应式状态保存源码与当前 `ThemeId`，预览区用 `ref` 挂载容器，在 `watch` 或防抖回调中调用 `mermaid.run` / `render` 并处理错误边界。
 
 ---
 
 ## 7. 架构与设计概要（初版）
 
-- **单页布局**：左侧或上方为编辑器，右侧或下方为预览；主题切换为顶栏或预览区上方的**可点击主题控件**。
-- **数据流**：编辑器文本 → 防抖 → `mermaid.parse` / `render` → 注入预览 DOM；主题 ID 变更 → 重新 `initialize` 或更新主题变量 → 对同一源码重新渲染。
+- **单页布局**：左侧或上方为编辑器，右侧或下方为预览；主题切换为顶栏或预览区上方的**可点击主题控件**（Vue 组件实现）。
+- **数据流**：`ref`/`reactive` 保存编辑器文本 → 防抖（可选手写 `setTimeout` 或 `@vueuse/core` 的 `useDebounceFn`）→ `mermaid.parse` / `render` → 注入预览 DOM；主题 ID 变更 → 重新 `initialize` 或更新主题变量 → 对同一源码重新渲染。
 - **主题模型**：`ThemeId` 枚举 + 每主题一份 `{ mermaidTheme, cssVariables }` 映射表；切换时更新状态并触发重绘。
-- **错误处理**：try/catch 包裹渲染；展示 `error.message` 或友好映射文案。
+- **错误处理**：try/catch 包裹渲染；展示 `error.message` 或友好映射文案；必要时用 `<Suspense>` 或独立错误子组件展示（按实现复杂度选用）。
 
 *详细接口与文件结构在通过本需求评审后，由 `writing-plans` 产出实现计划。*
 
@@ -146,7 +147,7 @@
 
 1. **部署形态**：仅本地 `npm run dev` 即可，还是需要静态托管路径（如 GitHub Pages）？
 2. **默认主题集**：是否有品牌色或必须包含的命名主题？
-3. **编辑器增强**：首版是否需要 Monaco/CodeMirror，还是原生 `<textarea>` 即可？
+3. **编辑器增强**：首版在 Vue 内是否需要 Monaco/CodeMirror（如 `monaco-editor` + 按需 worker），还是原生 `<textarea>` 即可？
 
 ---
 
@@ -155,3 +156,4 @@
 | 日期 | 版本 | 说明 |
 |------|------|------|
 | 2026-05-06 | 0.1 | 初稿：基于「编辑 + 预览 + 多主题点击切换」整理需求与设计概要 |
+| 2026-05-06 | 0.2 | 技术选型：前端统一为 **Vue 3 + Vite**；补充与 Mermaid 集成与防抖的实现说明 |
