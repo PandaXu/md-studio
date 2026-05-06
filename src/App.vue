@@ -38,10 +38,32 @@ function persistLayout(mode: LayoutMode) {
   }
 }
 
-const DEFAULT_SAMPLE = `flowchart LR
-  A[开始] --> B{判断}
-  B -->|是| C[结束]
-  B -->|否| A`
+const DEFAULT_SAMPLE = `flowchart TB
+  subgraph eras["范式演进"]
+    PE["Prompt Engineering\n• 单次/局部指令优化\n• 写好提示词"]
+    CE["Context Engineering\n• 动态拼装上下文\n• 检索 / 拼装策略"]
+    HE["Harness Engineering\n• 文件系统 · 沙箱 · 工具链\n• 工作流 · 反馈环 · 验收 / QA\n• 权限 · 审计 · 人工闸门"]
+    PE --> CE
+    CE --> HE
+  end
+
+  subgraph absorb["远期趋势：大模型内化原 Harness 层部分能力"]
+    M["增强后的大模型\n（能力向内收敛）"]
+    T1["工具调用 / 协议生态\n（部分内化到模型行为与编排）"]
+    T2["长上下文 + 结构化记忆\n（部分替代外部记忆工程）"]
+    T3["多步推理与自我检查\n（生产环境仍可能需外部可信 QA）"]
+    T4["策略与安全边界\n（编排变薄；合规常与人类流程仍在外）"]
+    M --- T1
+    M --- T2
+    M --- T3
+    M --- T4
+  end
+
+  HE -. "外部脚手架逐步变薄\n能力与逻辑部分被吸收" .-> absorb
+
+  Human["人（驾驶员）\n目的地 · 风险偏好 · 品质标准 · 价值判断"]
+  Human --> PE
+  Human -. "模型越强，方向与取舍越关键" .-> M`
 
 const source = ref(DEFAULT_SAMPLE)
 const debouncedSource = ref(DEFAULT_SAMPLE)

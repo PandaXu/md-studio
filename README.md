@@ -4,6 +4,8 @@ Vue 3 + Vite 的本地工具：Monaco 编辑源码、防抖预览 Mermaid 图，
 
 顶栏提供 **视图布局** 下拉：**左右并列**、**仅代码**、**仅预览图**（写入 `localStorage`）；**导出 SVG** 会下载当前预览中的矢量图（无可用图时会提示）。
 
+首次进入与「载入示例」使用内置的 **范式演进 / Harness / 大模型内化趋势** 示例流程图（`App.vue` 中 `DEFAULT_SAMPLE`）。
+
 ## 需求与规格
 
 见 [docs/superpowers/specs/2026-05-06-mermaid-editor-design.md](docs/superpowers/specs/2026-05-06-mermaid-editor-design.md)。
