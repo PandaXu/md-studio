@@ -14,9 +14,10 @@ import { RouterLink, RouterView } from 'vue-router'
 
 <style scoped>
 .app-shell {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 1rem 1.25rem 2rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 1rem clamp(0.75rem, 2vw, 1.5rem) 2rem;
 }
 
 .app-nav {
