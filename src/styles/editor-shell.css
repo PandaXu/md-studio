@@ -1,0 +1,231 @@
+/* Shared layout for Mermaid + Markdown editor views (see .editor-page root). */
+
+.editor-page .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.editor-page .title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  flex: 1 1 auto;
+  min-width: 12rem;
+}
+
+.editor-page .theme-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.editor-page .theme-label {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-right: 0.25rem;
+}
+
+.editor-page .theme-btn {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.editor-page .theme-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.editor-page .theme-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.editor-page .theme-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.editor-page .ghost-btn {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.editor-page .ghost-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.editor-page .toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+@media (min-width: 720px) {
+  .editor-page .toolbar-actions {
+    width: auto;
+    flex: 0 0 auto;
+  }
+}
+
+.editor-page .field-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.editor-page .field-label {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.editor-page .select {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  min-width: 10rem;
+  cursor: pointer;
+}
+
+.editor-page .select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.editor-page .primary-btn {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.editor-page .primary-btn:hover {
+  filter: brightness(1.05);
+}
+
+.editor-page .primary-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.editor-page .hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.editor-page .main {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  min-height: calc(100vh - 8rem);
+}
+
+.editor-page .main.layout-split {
+  grid-template-columns: 1fr 1fr;
+}
+
+.editor-page .main.layout-code,
+.editor-page .main.layout-preview {
+  grid-template-columns: 1fr;
+}
+
+.editor-page .main.layout-code .editor-pane,
+.editor-page .main.layout-preview .preview-pane {
+  min-height: calc(100vh - 10rem);
+}
+
+@media (max-width: 900px) {
+  .editor-page .main.layout-split {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+}
+
+.editor-page .pane {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  min-height: 360px;
+}
+
+.editor-page .pane-title {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.editor-page .pane-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-page .editor-pane .pane-body {
+  padding: 0;
+}
+
+.editor-page .preview-scroll {
+  overflow: auto;
+  padding: 1rem;
+}
+
+.editor-page .error-banner {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  background: var(--error-bg);
+  border-bottom: 1px solid var(--error-border);
+  color: var(--error-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.editor-page .mermaid-out {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.editor-page .mermaid-out svg {
+  max-width: 100%;
+  height: auto;
+}
