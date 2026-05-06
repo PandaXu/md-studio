@@ -1,14 +1,27 @@
-# Mermaid 编辑与预览
+# MD Studio
 
-Vue 3 + Vite 的本地工具：顶栏 **站内导航** 可在 **Markdown**（`/markdown`）与 **Mermaid**（`/`）两页间切换。
+一个基于 Vue 3 + Vite 的本地文档可视化工具，支持 **Markdown 文档编辑预览** 与 **Mermaid 图编辑渲染** 两种工作模式。顶栏导航可在 **Markdown**（`/markdown`）与 **Mermaid**（`/`）两页切换。
 
-**Mermaid 页**：Monaco 编辑源码、防抖预览 Mermaid 图，预览主题可在 **`default` / `dark` / `forest` / `enterprise`** 间点击切换；其中 **`enterprise`** 为自定义「运维架构图」风格（浅灰底、浅蓝节点、黑线黑字、直角，见 `src/themes.ts`）。主题选择会写入 `localStorage`。
+## 功能概览
 
-顶栏提供 **视图布局** 下拉：**左右并列**、**仅代码**、**仅预览图**（写入 `localStorage`）；**导出 SVG** 会下载当前预览中的矢量图（无可用图时会提示）。
+- **Markdown 页**
+  - Monaco 编辑器（`markdown` 模式）
+  - GFM 表格/任务列表 + `DOMPurify` 消毒渲染
+  - 正文浅色/深色阅读模式
+  - 文中 ` ```mermaid ` 代码块分块渲染，支持源码折叠/展开
+  - 导出 `.md` 与 `.html`（HTML 内联当前已渲染 SVG）
+  - 默认示例：`src/samples/harness-era-article.md`
 
-首次进入与「载入示例」使用内置的 **范式演进 / Harness / 大模型内化趋势** 示例流程图（`src/views/MermaidEditorView.vue` 中 `DEFAULT_SAMPLE`）。
+- **Mermaid 页**
+  - Monaco 编辑器 + 防抖渲染
+  - 主题切换：`default` / `dark` / `forest` / `enterprise`
+  - 视图布局：左右并列 / 仅代码 / 仅预览
+  - 导出 SVG
+  - 渲染错误时保留上一次成功结果
 
-**Markdown 页**：GFM 表格与任务列表、`markdown-it` 渲染 + `DOMPurify` 消毒预览；正文 **浅色 / 深色** 阅读模式；文中的 **` ```mermaid `** 块单独渲染为图（图表主题与 Mermaid 页同一套预设，持久化 key 独立）。**下载 .md** / **下载 HTML**（内联当前预览中的 SVG）。首次进入与「载入示例」使用 `src/samples/harness-era-article.md`（Harness 时代文章总结与演进图）。
+- **通用能力**
+  - 页面状态与主题配置持久化（`localStorage`）
+  - 双页共享统一工具栏与面板风格
 
 ## 需求与规格
 
