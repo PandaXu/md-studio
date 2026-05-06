@@ -6,6 +6,7 @@ import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
 import { sanitizeMarkdownHtml } from '@/markdown/sanitize'
 import { MERMAID_THEMES, type MermaidThemeId } from '@/themes'
+import defaultSample from '@/samples/harness-era-article.md?raw'
 
 type LayoutMode = 'split' | 'code' | 'preview'
 type ReadingMode = 'light' | 'dark'
@@ -21,25 +22,7 @@ const LAYOUT_OPTIONS: { value: LayoutMode; label: string }[] = [
   { value: 'preview', label: '仅预览' },
 ]
 
-const DEFAULT_SAMPLE = `# Markdown 示例
-
-GFM 表格与任务列表：
-
-| 步骤 | 说明 |
-|------|------|
-| 编辑 | 左侧修改源码 |
-| 预览 | 右侧实时预览 |
-
-- [x] 支持 **Markdown** 与 Mermaid
-- [ ] 自行编辑本文
-
-### Mermaid 图
-
-\`\`\`mermaid
-flowchart LR
-  A[开始] --> B[结束]
-\`\`\`
-`
+const DEFAULT_SAMPLE = defaultSample
 
 function loadStoredSource(): string | null {
   try {

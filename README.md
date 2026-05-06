@@ -8,7 +8,7 @@ Vue 3 + Vite 的本地工具：顶栏 **站内导航** 可在 **Mermaid**（`/`�
 
 首次进入与「载入示例」使用内置的 **范式演进 / Harness / 大模型内化趋势** 示例流程图（`src/views/MermaidEditorView.vue` 中 `DEFAULT_SAMPLE`）。
 
-**Markdown 页**：GFM 表格与任务列表、`markdown-it` 渲染 + `DOMPurify` 消毒预览；正文 **浅色 / 深色** 阅读模式；文中的 **` ```mermaid `** 块单独渲染为图（图表主题与 Mermaid 页同一套预设，持久化 key 独立）。**下载 .md** / **下载 HTML**（内联当前预览中的 SVG）。
+**Markdown 页**：GFM 表格与任务列表、`markdown-it` 渲染 + `DOMPurify` 消毒预览；正文 **浅色 / 深色** 阅读模式；文中的 **` ```mermaid `** 块单独渲染为图（图表主题与 Mermaid 页同一套预设，持久化 key 独立）。**下载 .md** / **下载 HTML**（内联当前预览中的 SVG）。首次进入与「载入示例」使用 `src/samples/harness-era-article.md`（Harness 时代文章总结与演进图）。
 
 ## 需求与规格
 
