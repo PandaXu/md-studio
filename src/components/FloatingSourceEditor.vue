@@ -158,6 +158,7 @@ defineExpose({ open, close, toggle })
 }
 
 .floating-title {
+  margin: 0;
   font-size: 0.9375rem;
   font-weight: 600;
 }
