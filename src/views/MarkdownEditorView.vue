@@ -7,6 +7,7 @@ import {
   isUrlFetchEnabled,
 } from '@/constants/mdFetchApi'
 import SourceEditor from '@/components/SourceEditor.vue'
+import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
 import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
 import { sanitizeMarkdownHtml } from '@/markdown/sanitize'
@@ -114,6 +115,11 @@ const loadUrlOpen = ref(false)
 const loadUrlDraft = ref('')
 const loadErr = ref<string | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const floatingEditorRef = ref<InstanceType<typeof FloatingSourceEditor> | null>(null)
+
+function openFloatingEditor() {
+  floatingEditorRef.value?.open()
+}
 
 const mdFetchBase = computed(() =>
   defaultMdFetchBaseForEnv(import.meta.env.DEV, import.meta.env.VITE_MD_FETCH_BASE),
@@ -529,7 +535,7 @@ function exportHtml() {
         <div v-if="topError" class="error-banner" role="alert">
           {{ topError }}
         </div>
-        <div class="pane-body preview-scroll">
+        <div class="pane-body preview-scroll" @dblclick="openFloatingEditor">
           <div class="markdown-preview-wrap" :class="previewWrapClass">
             <div ref="previewHost" class="markdown-body" />
           </div>
@@ -564,6 +570,12 @@ function exportHtml() {
         </div>
       </div>
     </Teleport>
+    <FloatingSourceEditor
+      ref="floatingEditorRef"
+      v-model="source"
+      language="markdown"
+      title="Markdown 源码编辑"
+    />
   </div>
 </template>
 
