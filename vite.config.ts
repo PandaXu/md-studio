@@ -2,6 +2,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { mdFetchDevMiddleware } from './vite/mdFetchDevMiddleware'
 
 // Package is CJS; default export lives on `.default` when loaded from ESM config.
 const require = createRequire(import.meta.url)
@@ -21,5 +22,8 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+  },
+  configureServer(server) {
+    server.middlewares.use(mdFetchDevMiddleware())
   },
 })
