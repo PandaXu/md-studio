@@ -3,6 +3,7 @@ import '@/styles/editor-shell.css'
 import mermaid from 'mermaid'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import SourceEditor from '@/components/SourceEditor.vue'
+import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
 import {
   MERMAID_THEMES,
   loadStoredTheme,
@@ -71,6 +72,11 @@ const debouncedSource = ref(DEFAULT_SAMPLE)
 const theme = ref<MermaidThemeId>(loadStoredTheme() ?? 'default')
 const layout = ref<LayoutMode>(loadStoredLayout())
 const previewHost = ref<HTMLElement | null>(null)
+const floatingEditorRef = ref<InstanceType<typeof FloatingSourceEditor> | null>(null)
+
+function openFloatingEditor() {
+  floatingEditorRef.value?.open()
+}
 
 const previewError = ref<string | null>(null)
 const lastOkSvg = ref<string | null>(null)
@@ -241,10 +247,15 @@ function exportSvg() {
         <div v-if="previewError" class="error-banner" role="alert">
           {{ previewError }}
         </div>
-        <div class="pane-body preview-scroll">
+        <div class="pane-body preview-scroll" @dblclick="openFloatingEditor">
           <div ref="previewHost" class="mermaid-out" />
         </div>
       </section>
     </main>
+    <FloatingSourceEditor
+      ref="floatingEditorRef"
+      v-model="source"
+      title="Mermaid 源码编辑"
+    />
   </div>
 </template>
