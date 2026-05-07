@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor'
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -19,12 +19,8 @@ const visible = ref(false)
 const host = ref<HTMLElement | null>(null)
 let editor: monaco.editor.IStandaloneCodeEditor | null = null
 
-type ITextModelWithSetLanguage = monaco.editor.ITextModel & {
-  setLanguageId(languageId: string): void
-}
-
 function createEditor() {
-  if (!host.value) return
+  if (!host.value || editor) return
   editor = monaco.editor.create(host.value, {
     value: props.modelValue,
     language: props.language,
@@ -58,22 +54,16 @@ function toggle() {
   visible.value = !visible.value
 }
 
-function onBackdropClick(e: MouseEvent) {
-  if (e.target === e.currentTarget) {
-    close()
-  }
-}
-
 function onEsc(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     close()
   }
 }
 
-watch(visible, (v) => {
+watch(visible, async (v) => {
   if (v) {
-    // Wait for next tick so the DOM ref is available
-    requestAnimationFrame(() => createEditor())
+    await nextTick()
+    createEditor()
     document.addEventListener('keydown', onEsc)
   } else {
     disposeEditor()
@@ -98,7 +88,8 @@ watch(
   () => props.language,
   (lang) => {
     if (!editor) return
-    ;(editor.getModel() as ITextModelWithSetLanguage | null)?.setLanguageId(lang)
+    const model = editor.getModel()
+    if (model) monaco.editor.setModelLanguage(model, lang)
   },
 )
 
@@ -112,12 +103,12 @@ defineExpose({ open, close, toggle })
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="floating-overlay" @click="onBackdropClick">
-      <div class="floating-dialog">
-        <div class="floating-header">
-          <span class="floating-title">{{ title }}</span>
-          <button class="floating-close" @click="close">✕</button>
-        </div>
+    <div v-if="visible" class="floating-overlay" @click.self="close">
+      <div class="floating-dialog" role="dialog" aria-modal="true" :aria-label="title">
+        <header class="floating-header">
+          <h3 class="floating-title">{{ title }}</h3>
+          <button class="floating-close" type="button" aria-label="关闭" @click="close">✕</button>
+        </header>
         <div ref="host" class="floating-editor-host" />
       </div>
     </div>
@@ -142,8 +133,8 @@ defineExpose({ open, close, toggle })
   max-width: 960px;
   max-height: 720px;
   border-radius: 10px;
-  background: var(--tk-surface-bg, #ffffff);
-  border: 1px solid var(--tk-border, #e0e0e0);
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e0e0e0);
   overflow: hidden;
 }
 
@@ -153,7 +144,7 @@ defineExpose({ open, close, toggle })
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--tk-border, #e0e0e0);
+  border-bottom: 1px solid var(--border, #e0e0e0);
   flex-shrink: 0;
 }
 
@@ -168,14 +159,14 @@ defineExpose({ open, close, toggle })
   border: none;
   cursor: pointer;
   font-size: 1rem;
-  color: var(--tk-muted, #888);
+  color: var(--muted, #888);
   padding: 4px 8px;
   border-radius: 4px;
   line-height: 1;
 }
 
 .floating-close:hover {
-  background: var(--tk-hover-bg, rgba(0, 0, 0, 0.06));
+  background: var(--hover-bg, rgba(0, 0, 0, 0.06));
 }
 
 .floating-editor-host {
