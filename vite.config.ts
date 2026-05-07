@@ -17,13 +17,16 @@ export default defineConfig({
       // Plaintext editing: only the base editor worker (see spec FR-ED-05).
       languageWorkers: ['editorWorkerService'],
     }),
+    {
+      name: 'md-fetch-dev-middleware',
+      configureServer(server) {
+        server.middlewares.use(mdFetchDevMiddleware())
+      },
+    },
   ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-  },
-  configureServer(server) {
-    server.middlewares.use(mdFetchDevMiddleware())
   },
 })
