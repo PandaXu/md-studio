@@ -17,6 +17,7 @@ const emit = defineEmits<{
 
 const visible = ref(false)
 const host = ref<HTMLElement | null>(null)
+const pendingLine = ref<number | null>(null)
 let editor: monaco.editor.IStandaloneCodeEditor | null = null
 
 function createEditor() {
@@ -42,7 +43,8 @@ function disposeEditor() {
   editor = null
 }
 
-function open() {
+function open(lineNumber?: number) {
+  pendingLine.value = lineNumber ?? null
   visible.value = true
 }
 
@@ -64,6 +66,13 @@ watch(visible, async (v) => {
   if (v) {
     await nextTick()
     createEditor()
+    if (pendingLine.value !== null && editor) {
+      const line = pendingLine.value
+      editor.revealLine(line)
+      editor.setPosition({ lineNumber: line, column: 1 })
+      editor.focus()
+      pendingLine.value = null
+    }
     document.addEventListener('keydown', onEsc)
   } else {
     disposeEditor()

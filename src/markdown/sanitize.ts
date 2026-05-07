@@ -51,7 +51,7 @@ const CONFIG: Config = {
     'disabled',
     'role',
   ],
-  ALLOW_DATA_ATTR: false,
+  ALLOW_DATA_ATTR: true,
 }
 
 export function sanitizeMarkdownHtml(dirty: string): string {

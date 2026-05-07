@@ -117,8 +117,14 @@ const loadErr = ref<string | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const floatingEditorRef = ref<InstanceType<typeof FloatingSourceEditor> | null>(null)
 
-function openFloatingEditor() {
-  floatingEditorRef.value?.open()
+function openFloatingEditor(lineNumber?: number) {
+  floatingEditorRef.value?.open(lineNumber)
+}
+
+function onPreviewDblClick(ev: MouseEvent) {
+  const el = (ev.target as HTMLElement).closest('[data-line]')
+  const line = el ? Number((el as HTMLElement).dataset.line) + 1 : undefined
+  openFloatingEditor(line)
 }
 
 const mdFetchBase = computed(() =>
@@ -535,7 +541,7 @@ function exportHtml() {
         <div v-if="topError" class="error-banner" role="alert">
           {{ topError }}
         </div>
-        <div class="pane-body preview-scroll" @dblclick="openFloatingEditor">
+        <div class="pane-body preview-scroll" @dblclick="onPreviewDblClick">
           <div class="markdown-preview-wrap" :class="previewWrapClass">
             <div ref="previewHost" class="markdown-body" />
           </div>

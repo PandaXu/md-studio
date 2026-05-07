@@ -74,8 +74,18 @@ const layout = ref<LayoutMode>(loadStoredLayout())
 const previewHost = ref<HTMLElement | null>(null)
 const floatingEditorRef = ref<InstanceType<typeof FloatingSourceEditor> | null>(null)
 
-function openFloatingEditor() {
-  floatingEditorRef.value?.open()
+function openFloatingEditor(lineNumber?: number) {
+  floatingEditorRef.value?.open(lineNumber)
+}
+
+function onPreviewDblClick(ev: MouseEvent) {
+  const svg = previewHost.value?.querySelector('svg')
+  if (!svg) { openFloatingEditor(); return }
+  const rect = svg.getBoundingClientRect()
+  const ratio = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height))
+  const lineCount = source.value.split('\n').length
+  const line = Math.max(1, Math.floor(ratio * lineCount) + 1)
+  openFloatingEditor(line)
 }
 
 const previewError = ref<string | null>(null)
@@ -247,7 +257,7 @@ function exportSvg() {
         <div v-if="previewError" class="error-banner" role="alert">
           {{ previewError }}
         </div>
-        <div class="pane-body preview-scroll" @dblclick="openFloatingEditor">
+        <div class="pane-body preview-scroll" @dblclick="onPreviewDblClick">
           <div ref="previewHost" class="mermaid-out" />
         </div>
       </section>
