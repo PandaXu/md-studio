@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import '@/styles/editor-shell.css'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  buildMdFetchProxyUrl,
+  defaultMdFetchBaseForEnv,
+  isUrlFetchEnabled,
+} from '@/constants/mdFetchApi'
 import SourceEditor from '@/components/SourceEditor.vue'
 import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
@@ -104,6 +109,129 @@ const previewHost = ref<HTMLElement | null>(null)
 
 const topError = ref<string | null>(null)
 
+const loadMenuOpen = ref(false)
+const loadUrlOpen = ref(false)
+const loadUrlDraft = ref('')
+const loadErr = ref<string | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const mdFetchBase = computed(() =>
+  defaultMdFetchBaseForEnv(import.meta.env.DEV, import.meta.env.VITE_MD_FETCH_BASE),
+)
+const urlLoadEnabled = computed(() => isUrlFetchEnabled(mdFetchBase.value, import.meta.env.DEV))
+const urlMenuTitle = computed(() =>
+  urlLoadEnabled.value ? '' : '生产环境需在 .env 中配置 VITE_MD_FETCH_BASE 后才可从 URL 载入',
+)
+
+function toggleLoadMenu() {
+  loadMenuOpen.value = !loadMenuOpen.value
+}
+
+function closeLoadMenu() {
+  loadMenuOpen.value = false
+}
+
+function pickLocalMd() {
+  closeLoadMenu()
+  loadErr.value = null
+  fileInputRef.value?.click()
+}
+
+function openLoadUrlDialog() {
+  closeLoadMenu()
+  if (!urlLoadEnabled.value) return
+  loadErr.value = null
+  loadUrlDraft.value = ''
+  loadUrlOpen.value = true
+}
+
+function closeLoadUrlDialog() {
+  loadUrlOpen.value = false
+  loadErr.value = null
+}
+
+function applyLoadedMarkdown(text: string) {
+  source.value = text
+  debouncedSource.value = text
+}
+
+function validateHttpUrl(raw: string): URL | null {
+  const t = raw.trim()
+  try {
+    const u = new URL(t)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+    return u
+  } catch {
+    return null
+  }
+}
+
+async function fetchMarkdownFromProxy(target: string): Promise<string> {
+  const reqUrl = buildMdFetchProxyUrl(mdFetchBase.value, target)
+  const res = await fetch(reqUrl, { method: 'GET', mode: 'cors', credentials: 'omit' })
+  const ct = res.headers.get('content-type') ?? ''
+  if (!res.ok) {
+    let msg = `载入失败 (${res.status})`
+    if (ct.includes('application/json')) {
+      try {
+        const data = (await res.json()) as { error?: string }
+        if (typeof data.error === 'string' && data.error) msg = data.error
+      } catch {
+        /* ignore */
+      }
+    }
+    throw new Error(msg)
+  }
+  return await res.text()
+}
+
+async function confirmLoadUrl() {
+  if (!urlLoadEnabled.value) return
+  loadErr.value = null
+  const u = validateHttpUrl(loadUrlDraft.value)
+  if (!u) {
+    loadErr.value = '请输入有效的 http 或 https 绝对 URL'
+    return
+  }
+  try {
+    const text = await fetchMarkdownFromProxy(u.href)
+    applyLoadedMarkdown(text)
+    closeLoadUrlDialog()
+  } catch (e) {
+    loadErr.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+function onPickFile(ev: Event) {
+  const input = ev.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    const text = typeof reader.result === 'string' ? reader.result : ''
+    applyLoadedMarkdown(text)
+    loadErr.value = null
+  }
+  reader.onerror = () => {
+    loadErr.value = '读取本地文件失败'
+  }
+  reader.readAsText(file, 'utf-8')
+}
+
+function onGlobalPointerDown(ev: PointerEvent) {
+  if (!loadMenuOpen.value) return
+  const root = document.getElementById('load-md-menu-root')
+  const t = ev.target as Node
+  if (root && !root.contains(t)) closeLoadMenu()
+}
+
+function onGlobalKeydown(ev: KeyboardEvent) {
+  if (ev.key !== 'Escape') return
+  if (loadUrlOpen.value) closeLoadUrlDialog()
+  else closeLoadMenu()
+}
+
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let pipelineSeq = 0
 
@@ -186,6 +314,13 @@ watch(layout, (mode) => {
 onMounted(() => {
   debouncedSource.value = source.value
   void runMarkdownPipeline()
+  document.addEventListener('pointerdown', onGlobalPointerDown, true)
+  document.addEventListener('keydown', onGlobalKeydown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onGlobalPointerDown, true)
+  document.removeEventListener('keydown', onGlobalKeydown)
 })
 
 function loadSample() {
@@ -325,6 +460,52 @@ function exportHtml() {
             </option>
           </select>
         </label>
+        <div id="load-md-menu-root" class="load-md-wrap">
+          <button
+            type="button"
+            class="ghost-btn"
+            aria-haspopup="menu"
+            :aria-expanded="loadMenuOpen"
+            aria-controls="load-md-menu"
+            @click="toggleLoadMenu"
+          >
+            加载 .md
+          </button>
+          <ul
+            v-show="loadMenuOpen"
+            id="load-md-menu"
+            class="load-md-menu"
+            role="menu"
+            aria-label="加载 Markdown"
+          >
+            <li role="none">
+              <button type="button" class="load-md-menu-item" role="menuitem" @click="pickLocalMd">
+                从本地选择…
+              </button>
+            </li>
+            <li role="none">
+              <button
+                type="button"
+                class="load-md-menu-item"
+                role="menuitem"
+                :disabled="!urlLoadEnabled"
+                :title="urlMenuTitle"
+                @click="openLoadUrlDialog"
+              >
+                从 URL 载入…
+              </button>
+            </li>
+          </ul>
+          <input
+            ref="fileInputRef"
+            type="file"
+            class="visually-hidden"
+            accept=".md,.markdown,.txt,text/markdown,text/plain"
+            aria-hidden="true"
+            tabindex="-1"
+            @change="onPickFile"
+          />
+        </div>
         <button type="button" class="primary-btn" @click="exportMd">下载 .md</button>
         <button type="button" class="ghost-btn" @click="exportHtml">下载 HTML</button>
         <button type="button" class="ghost-btn" @click="loadSample">载入示例</button>
@@ -355,6 +536,34 @@ function exportHtml() {
         </div>
       </section>
     </main>
+
+    <Teleport to="body">
+      <div
+        v-if="loadUrlOpen"
+        class="load-md-overlay"
+        role="presentation"
+        @click.self="closeLoadUrlDialog"
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="load-md-url-title"
+          class="load-md-dialog"
+          @click.stop
+        >
+          <h3 id="load-md-url-title" class="load-md-dialog-title">从 URL 载入 Markdown</h3>
+          <label class="load-md-url-label">
+            <span class="load-md-url-label-text">URL</span>
+            <input v-model.trim="loadUrlDraft" type="url" class="load-md-url-input" autocomplete="off" />
+          </label>
+          <p v-if="loadErr" class="load-md-err" role="alert">{{ loadErr }}</p>
+          <div class="load-md-dialog-actions">
+            <button type="button" class="ghost-btn" @click="closeLoadUrlDialog">取消</button>
+            <button type="button" class="primary-btn" @click="confirmLoadUrl">载入</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -577,5 +786,111 @@ function exportHtml() {
 
 .reading-dark .markdown-body :deep(.mermaid-error) {
   color: #fca5a5;
+}
+
+.load-md-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.load-md-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  min-width: 11rem;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  z-index: 20;
+}
+
+.load-md-menu-item {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.45rem 0.85rem;
+  border: none;
+  background: transparent;
+  color: var(--text, #111);
+  cursor: pointer;
+}
+
+.load-md-menu-item:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.load-md-menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.load-md-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 28, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+
+.load-md-dialog {
+  width: min(520px, calc(100vw - 2rem));
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+}
+
+.load-md-dialog-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.load-md-url-label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.load-md-url-label-text {
+  color: var(--muted, #5c6578);
+}
+
+.load-md-url-input {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border, #e5e7eb);
+}
+
+.load-md-err {
+  margin: 0.5rem 0 0;
+  color: #b45309;
+  font-size: 0.8125rem;
+}
+
+.load-md-dialog-actions {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 </style>
