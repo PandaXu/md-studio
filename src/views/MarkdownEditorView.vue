@@ -121,7 +121,92 @@ function openFloatingEditor(lineNumber?: number) {
   floatingEditorRef.value?.open(lineNumber)
 }
 
+// In-place editing state
+const editingEl = ref<HTMLElement | null>(null)
+const editingOriginalHTML = ref('')
+const editingLineStart = ref(-1)
+let clickTimer: ReturnType<typeof setTimeout> | null = null
+
+function prefixFromSourceLine(line: string): string {
+  const m = line.match(/^(#{1,6}\s|>\s?|[-*+]\s|\d+\.\s)/)
+  return m ? m[1] : ''
+}
+
+function cleanupEdit() {
+  editingEl.value = null
+  editingOriginalHTML.value = ''
+  editingLineStart.value = -1
+}
+
+function commitEdit() {
+  if (!editingEl.value) return
+  const ta = editingEl.value.querySelector('textarea')
+  if (!ta) return
+
+  const newText = ta.value
+  const sourceLines = source.value.split('\n')
+  const lineStart = editingLineStart.value
+  const prefix = prefixFromSourceLine(sourceLines[lineStart] || '')
+
+  // Replace the start line with prefix + new text
+  sourceLines[lineStart] = prefix + newText
+  source.value = sourceLines.join('\n')
+
+  cleanupEdit()
+}
+
+function cancelEdit() {
+  if (editingEl.value) {
+    editingEl.value.innerHTML = editingOriginalHTML.value
+  }
+  cleanupEdit()
+}
+
+function startInlineEdit(block: HTMLElement, lineStart: number) {
+  const sourceLines = source.value.split('\n')
+  const prefix = prefixFromSourceLine(sourceLines[lineStart] || '')
+
+  editingEl.value = block
+  editingOriginalHTML.value = block.innerHTML
+  editingLineStart.value = lineStart
+
+  const text = block.textContent || ''
+  const ta = document.createElement('textarea')
+  ta.value = prefix ? text.slice(prefix.length) : text
+  ta.className = 'inline-edit-textarea'
+  block.innerHTML = ''
+  block.appendChild(ta)
+  ta.focus()
+  ta.select()
+
+  ta.addEventListener('blur', commitEdit)
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit() }
+    if (e.key === 'Escape') cancelEdit()
+  })
+}
+
+function onClickPreview(ev: MouseEvent) {
+  // Clear any pending click timer (for dblclick conflict resolution)
+  if (clickTimer) { clearTimeout(clickTimer); clickTimer = null }
+
+  const target = ev.target as HTMLElement
+  if (target.closest('a, code, pre, input, details, .mermaid-block')) return
+
+  const block = target.closest('[data-line]') as HTMLElement | null
+  if (!block) return
+
+  const lineStart = Number(block.dataset.line)
+  // Delay to allow double-click to take precedence
+  clickTimer = setTimeout(() => {
+    clickTimer = null
+    startInlineEdit(block, lineStart)
+  }, 300)
+}
+
 function onPreviewDblClick(ev: MouseEvent) {
+  // Cancel pending single-click inline edit
+  if (clickTimer) { clearTimeout(clickTimer); clickTimer = null }
   const el = (ev.target as HTMLElement).closest('[data-line]')
   const line = el ? Number((el as HTMLElement).dataset.line) + 1 : undefined
   openFloatingEditor(line)
@@ -541,7 +626,7 @@ function exportHtml() {
         <div v-if="topError" class="error-banner" role="alert">
           {{ topError }}
         </div>
-        <div class="pane-body preview-scroll" @dblclick="onPreviewDblClick">
+        <div class="pane-body preview-scroll" @click="onClickPreview" @dblclick="onPreviewDblClick">
           <div class="markdown-preview-wrap" :class="previewWrapClass">
             <div ref="previewHost" class="markdown-body" />
           </div>
@@ -910,5 +995,21 @@ function exportHtml() {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.inline-edit-textarea {
+  width: 100%;
+  min-height: 2em;
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  background: var(--surface, #fff);
+  border: 2px solid var(--accent, #2563eb);
+  border-radius: 4px;
+  padding: 0.25em 0.4em;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
 }
 </style>
