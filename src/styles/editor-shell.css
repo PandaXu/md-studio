@@ -248,7 +248,7 @@
 }
 
 .editor-shell-with-sidebar[data-sidebar-collapsed='true'] {
-  grid-template-columns: 32px 1fr;
+  grid-template-columns: 1fr;
 }
 
 .editor-shell-with-sidebar > .editor-page {

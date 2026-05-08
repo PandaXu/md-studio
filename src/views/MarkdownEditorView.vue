@@ -180,6 +180,10 @@ watch(layout, (mode) => {
 watch(editMode, persistEditMode)
 watch(sidebarCollapsed, persistSidebarCollapsed)
 
+watch(reading, (mode) => {
+  document.documentElement.setAttribute('data-reading', mode)
+}, { immediate: true })
+
 onMounted(() => {
   debouncedSource.value = activeContent.value
   void runMarkdownPipeline()
@@ -250,9 +254,9 @@ function exportHtml() {
   URL.revokeObjectURL(url)
 }
 
-async function downloadActiveMd() {
+async function downloadDocAsMd(id: string) {
   await lib.flush()
-  const out = lib.exportActiveAsMarkdown()
+  const out = lib.exportDocAsMarkdown(id)
   if (!out) return
   const url = URL.createObjectURL(out.blob)
   const a = document.createElement('a')
@@ -296,15 +300,23 @@ async function onSelect(id: string) { await lib.setActive(id) }
 async function onRename(id: string, newTitle: string) { await lib.renameDoc(id, newTitle) }
 async function onUnlock(id: string) { await lib.unlockTitle(id) }
 async function onDelete(id: string) { await lib.deleteDoc(id) }
+
+async function onDuplicate(id: string) {
+  const dup = await lib.duplicateDoc(id)
+  if (!dup) return
+  importBanner.value = `已创建副本：${dup.title}`
+  setTimeout(() => { importBanner.value = null }, 4000)
+}
 </script>
 
 <template>
   <div
     class="editor-shell-with-sidebar"
+    :data-reading="reading"
     :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'"
   >
     <DocumentLibraryPanel
-      v-model:collapsed="sidebarCollapsed"
+      v-if="!sidebarCollapsed"
       v-model:search-query="searchQuery"
       :docs="filteredDocs"
       :active-id="activeId"
@@ -313,8 +325,9 @@ async function onDelete(id: string) { await lib.deleteDoc(id) }
       @rename="onRename"
       @unlock-title="onUnlock"
       @delete="onDelete"
+      @duplicate="onDuplicate"
+      @download="downloadDocAsMd"
       @new-doc="onNewDoc"
-      @download="downloadActiveMd"
       @imported="onImported"
       @import-error="onImportError"
     />
@@ -328,7 +341,17 @@ async function onDelete(id: string) { await lib.deleteDoc(id) }
       </div>
 
       <header class="toolbar">
-        <h1 class="title">Markdown 编辑与预览</h1>
+        <button
+          type="button"
+          class="toolbar-toggle"
+          :aria-label="sidebarCollapsed ? '展开文档库侧栏' : '收起文档库侧栏'"
+          :aria-expanded="!sidebarCollapsed"
+          title="切换文档库"
+          @click="sidebarCollapsed = !sidebarCollapsed"
+        >≡</button>
+        <h1 class="doc-title" :class="{ muted: !lib.activeDoc.value }">
+          {{ lib.activeDoc.value?.title ?? '未选中文档' }}
+        </h1>
         <div v-if="layout !== 'code'" class="theme-group" role="group" aria-label="阅读模式">
           <span class="theme-label">正文</span>
           <button type="button" class="theme-btn" :class="{ active: reading === 'light' }"
@@ -422,6 +445,47 @@ async function onDelete(id: string) { await lib.deleteDoc(id) }
 </template>
 
 <style scoped>
+.toolbar-toggle {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.toolbar-toggle:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-reading='dark'] .toolbar-toggle:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.doc-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  flex: 1 1 auto;
+  min-width: 8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.doc-title.muted {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .markdown-preview-wrap {
   border-radius: 8px;
   padding: 0.75rem 1rem;
@@ -665,5 +729,19 @@ async function onDelete(id: string) { await lib.deleteDoc(id) }
   display: flex;
   gap: 0.5rem;
   justify-content: center;
+}
+
+.editor-page :deep(.toolbar) {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0.6rem 1rem;
+  background: var(--surface);
+}
+
+.editor-page :deep(.hint) {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 </style>
