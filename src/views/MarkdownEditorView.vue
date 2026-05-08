@@ -8,7 +8,6 @@ import {
 } from '@/constants/mdFetchApi'
 import SourceEditor from '@/components/SourceEditor.vue'
 import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
-import TipTapEditor from '@/components/TipTapEditor.vue'
 import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
 import { sanitizeMarkdownHtml } from '@/markdown/sanitize'
@@ -539,21 +538,14 @@ function exportHtml() {
       </section>
       <section v-show="layout !== 'code'" class="pane preview-pane" aria-label="预览">
         <h2 class="pane-title">预览</h2>
-        <template v-if="layout === 'preview'">
-          <div class="pane-body preview-scroll">
-            <TipTapEditor v-model="source" />
+        <div v-if="topError" class="error-banner" role="alert">
+          {{ topError }}
+        </div>
+        <div class="pane-body preview-scroll" @dblclick="onPreviewDblClick">
+          <div class="markdown-preview-wrap" :class="previewWrapClass">
+            <div ref="previewHost" class="markdown-body" />
           </div>
-        </template>
-        <template v-else>
-          <div v-if="topError" class="error-banner" role="alert">
-            {{ topError }}
-          </div>
-          <div class="pane-body preview-scroll" @dblclick="onPreviewDblClick">
-            <div class="markdown-preview-wrap" :class="previewWrapClass">
-              <div ref="previewHost" class="markdown-body" />
-            </div>
-          </div>
-        </template>
+        </div>
       </section>
     </main>
 
