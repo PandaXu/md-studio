@@ -110,26 +110,29 @@ export function useDocumentLibrary(): LibraryHandle {
   }
 
   async function doFlush(targetId: string | null) {
-    if (!store) return
-    if (!targetId) return
-    const idx = docs.value.findIndex((d) => d.id === targetId)
-    if (idx === -1) return
-    const current = docs.value[idx]
-    const nextContent = targetId === activeId.value ? activeContent.value : current.content
-    if (current.content === nextContent) return
-    const ts = Date.now()
-    const nextTitle = current.titleLocked
-      ? current.title
-      : deriveTitle(nextContent, nextUntitledOrdinal(docs.value.map((d) => d.title)))
-    const updated: Doc = {
-      ...current,
-      content: nextContent,
-      title: nextTitle,
-      updatedAt: ts,
+    try {
+      if (!store) return
+      if (!targetId) return
+      const idx = docs.value.findIndex((d) => d.id === targetId)
+      if (idx === -1) return
+      const current = docs.value[idx]
+      const nextContent = targetId === activeId.value ? activeContent.value : current.content
+      if (current.content === nextContent) return
+      const ts = Date.now()
+      const nextTitle = current.titleLocked
+        ? current.title
+        : deriveTitle(nextContent, nextUntitledOrdinal(docs.value.map((d) => d.title)))
+      const updated: Doc = {
+        ...current,
+        content: nextContent,
+        title: nextTitle,
+        updatedAt: ts,
+      }
+      docs.value.splice(idx, 1, updated)
+      await persistDocImmediately(updated)
+    } finally {
+      if (pendingPutId === targetId) pendingPutId = null
     }
-    docs.value.splice(idx, 1, updated)
-    await persistDocImmediately(updated)
-    if (pendingPutId === targetId) pendingPutId = null
   }
 
   async function flush(): Promise<void> {
@@ -218,6 +221,13 @@ export function useDocumentLibrary(): LibraryHandle {
   async function deleteDoc(id: string): Promise<void> {
     const idx = docs.value.findIndex((d) => d.id === id)
     if (idx === -1) return
+    if (pendingPutId === id) {
+      if (saveTimer) {
+        clearTimeout(saveTimer)
+        saveTimer = null
+      }
+      pendingPutId = null
+    }
     if (store) await store.delete(id)
     const wasActive = activeId.value === id
     const sortedBefore = sortedDocs.value
