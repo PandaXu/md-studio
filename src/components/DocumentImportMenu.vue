@@ -24,6 +24,7 @@ const urlOpen = ref(false)
 const urlDraft = ref('')
 const urlErr = ref<string | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const wrapRef = ref<HTMLElement | null>(null)
 
 const mdFetchBase = computed(() =>
   defaultMdFetchBaseForEnv(import.meta.env.DEV, import.meta.env.VITE_MD_FETCH_BASE),
@@ -78,15 +79,15 @@ function validateHttpUrl(raw: string): URL | null {
 async function fetchMarkdownFromProxy(target: string): Promise<string> {
   const reqUrl = buildMdFetchProxyUrl(mdFetchBase.value, target)
   const res = await fetch(reqUrl, { method: 'GET', mode: 'cors', credentials: 'omit' })
-  const ct = res.headers.get('content-type') ?? ''
   if (!res.ok) {
     let msg = `载入失败 (${res.status})`
-    if (ct.includes('application/json')) {
+    const raw = await res.text().catch(() => '')
+    if (raw) {
       try {
-        const data = (await res.json()) as { error?: string }
+        const data = JSON.parse(raw) as { error?: unknown }
         if (typeof data.error === 'string' && data.error) msg = data.error
       } catch {
-        /* ignore */
+        /* not JSON, keep default msg */
       }
     }
     throw new Error(msg)
@@ -127,21 +128,31 @@ async function onPickFile(ev: Event) {
   const files = Array.from(input.files ?? [])
   input.value = ''
   if (!files.length) return
+
+  const results = await Promise.allSettled(
+    files.map(async (file) => ({
+      file,
+      content: await readFileAsText(file),
+    })),
+  )
+
   const items: ImportedItem[] = []
   const errors: string[] = []
-  for (const file of files) {
-    try {
-      const content = await readFileAsText(file)
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i]
+    if (r.status === 'fulfilled') {
+      const { file, content } = r.value
       const stripped = file.name.replace(/\.(md|markdown|txt)$/i, '')
       items.push({
         title: stripped || file.name,
         content,
         titleLocked: true,
       })
-    } catch {
-      errors.push(file.name)
+    } else {
+      errors.push(files[i].name)
     }
   }
+
   if (items.length) emit('imported', items)
   if (errors.length) {
     emit(
@@ -155,7 +166,7 @@ async function onPickFile(ev: Event) {
 
 function onGlobalPointerDown(ev: PointerEvent) {
   if (!menuOpen.value) return
-  const root = document.getElementById(props.menuId ?? 'doc-import-menu-root')
+  const root = wrapRef.value
   const t = ev.target as Node
   if (root && !root.contains(t)) closeMenu()
 }
@@ -177,7 +188,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div :id="menuId ?? 'doc-import-menu-root'" class="doc-import-wrap">
+  <div ref="wrapRef" class="doc-import-wrap">
     <button
       type="button"
       class="doc-import-trigger"
