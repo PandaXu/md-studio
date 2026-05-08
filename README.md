@@ -59,6 +59,25 @@ npm run dev
 
 浏览器打开终端里提示的本地地址即可。
 
+## macOS 桌面应用（Electron）
+
+使用内置 **Chromium**（与 Chrome 同源内核）将站点打为本地 `.app`，数据仍走浏览器 **IndexedDB**，完全离线可用。
+
+```bash
+npm install
+npm run electron:pack   # 快速生成 release/mac-arm64/MD Studio.app（或 x64，视本机架构）
+# 或
+npm run electron:build  # 额外产出 DMG、ZIP，输出在 release/
+```
+
+开发时连 Vite 热更新：
+
+```bash
+npm run electron:dev
+```
+
+首次打开未签名应用时，若 macOS 拦截，可在 **系统设置 → 隐私与安全性** 中选择仍要打开，或右键应用 → 打开。
+
 ## 脚本
 
 | 命令 | 说明 |
@@ -67,6 +86,9 @@ npm run dev
 | `npm run build` | 生产构建 |
 | `npm run preview` | 本地预览构建产物 |
 | `npm run typecheck` | `vue-tsc` 类型检查 |
+| `npm run electron:dev` | Vite + Electron 联调 |
+| `npm run electron:pack` | 构建前端并打包为本地 `.app`（`--dir`） |
+| `npm run electron:build` | 构建前端并打 macOS `dmg` / `zip` |
 
 ## 技术说明
 
@@ -74,6 +96,7 @@ npm run dev
 - **Toast UI Editor**：WYSIWYG 与 `default` / `dark` 主题切换；内嵌 Mermaid 与 `themes.ts` 中 enterprise 预览变体一致。
 - **Mermaid**：`mermaid.initialize` 随主题与阅读模式更新；单页与 Markdown 预览内块级渲染失败时的降级策略见代码注释。
 - **IndexedDB**：文档与文件夹持久化（`src/markdown/documentStore.ts`）；导入 ZIP 使用 `fflate`；目录上传通过 `webkitdirectory` 解析路径（`src/markdown/directoryMdImport.ts`）。
+- **Electron 桌面包**：`vite` 使用 `base: './'` 以便 `file://` 加载资源；在 `file:` 协议下路由自动为 **hash 模式**（地址形如 `#/markdown`），与浏览器内访问的 history 模式并存。
 
 ## 浏览器
 

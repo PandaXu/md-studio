@@ -11,6 +11,8 @@ const monacoEditorPlugin = require('vite-plugin-monaco-editor').default as (
 ) => import('vite').Plugin
 
 export default defineConfig({
+  /** 相对路径，便于 Electron file:// 与任意静态托管打开 dist */
+  base: './',
   plugins: [
     vue(),
     monacoEditorPlugin({
