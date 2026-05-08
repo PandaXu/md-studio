@@ -17,8 +17,8 @@
 - **文档库（IndexedDB）**
   - 树形展示：根目录与**文件夹**嵌套、文档可拖入文件夹或移回根目录
   - 文档：新建、切换、重命名、标题锁定/解锁、复制、删除、搜索、侧栏折叠与宽度拖拽
-  - 文件夹：新建（**弹窗输入名称**）、重命名、删除、导出 ZIP、右键/⋯ 菜单
-  - **导入**：工具栏上传（`.md` / `.txt` / `.zip`）；支持从文件夹菜单**上传到指定文件夹**；可选从 URL 拉取（需配置 `VITE_MD_FETCH_BASE`）
+  - 文件夹：根目录新建（**弹窗输入名称**）、在任意文件夹下**新建子文件夹**（右键或 ⋯ 菜单）；重命名、删除、导出 ZIP、右键/⋯ 菜单
+  - **导入**：工具栏「从本地选择」支持 `.md` / `.txt` / `.zip`；**上传文件夹**仅导入 `.md`，在库中创建与**本地所选文件夹同名**的根目录并保留其下子目录结构（也可从文件夹菜单上传到当前文件夹下）。支持从 URL 拉取（需配置 `VITE_MD_FETCH_BASE`）
   - 导出当前文档为 `.md`（侧栏下载图标）
   - 老数据自动迁移（规格见设计文档）
 
@@ -73,7 +73,7 @@ npm run dev
 - **Monaco**：`vite-plugin-monaco-editor`（见 `vite.config.ts`）；Markdown 使用 `language="markdown"` 时按需带上相关 worker。
 - **Toast UI Editor**：WYSIWYG 与 `default` / `dark` 主题切换；内嵌 Mermaid 与 `themes.ts` 中 enterprise 预览变体一致。
 - **Mermaid**：`mermaid.initialize` 随主题与阅读模式更新；单页与 Markdown 预览内块级渲染失败时的降级策略见代码注释。
-- **IndexedDB**：文档与文件夹持久化（`src/markdown/documentStore.ts`）；导入 ZIP 使用 `fflate`。
+- **IndexedDB**：文档与文件夹持久化（`src/markdown/documentStore.ts`）；导入 ZIP 使用 `fflate`；目录上传通过 `webkitdirectory` 解析路径（`src/markdown/directoryMdImport.ts`）。
 
 ## 浏览器
 

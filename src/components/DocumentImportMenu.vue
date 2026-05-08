@@ -7,8 +7,15 @@ import {
   isUrlFetchEnabled,
 } from '@/constants/mdFetchApi'
 import { deriveTitleFromUrl } from '@/markdown/documentTitle'
+import { parseMdEntryFromWebkitPath } from '@/markdown/directoryMdImport'
 
-export type ImportedItem = { title: string; content: string; titleLocked: boolean }
+export type ImportedItem = {
+  title: string
+  content: string
+  titleLocked: boolean
+  /** 相对所选上传根目录的文件夹路径（不含文件名）；缺省表示直接落在导入目标文件夹下 */
+  folderSegments?: string[]
+}
 
 export type DocLibraryImportPayload = {
   items: ImportedItem[]
@@ -31,6 +38,7 @@ const urlOpen = ref(false)
 const urlDraft = ref('')
 const urlErr = ref<string | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const folderInputRef = ref<HTMLInputElement | null>(null)
 const wrapRef = ref<HTMLElement | null>(null)
 const triggerRef = ref<HTMLButtonElement | null>(null)
 const menuTeleportRef = ref<HTMLElement | null>(null)
@@ -96,7 +104,7 @@ function toggleMenu() {
   else openMenu()
 }
 
-defineExpose({ openMenu, closeMenu, openLocalPickerForFolder })
+defineExpose({ openMenu, closeMenu, openLocalPickerForFolder, openFolderPickerForFolder })
 
 function emitImported(items: ImportedItem[]) {
   if (!items.length) return
@@ -119,6 +127,19 @@ function openLocalPickerForFolder(folderId: string) {
   queueMicrotask(() => {
     fileInputRef.value?.click()
   })
+}
+
+/** 选择本地文件夹，递归导入其中 .md，保持子目录结构 */
+function openFolderPickerForFolder(folderId: string | null) {
+  pendingFolderForImport.value = folderId
+  closeMenu()
+  queueMicrotask(() => {
+    folderInputRef.value?.click()
+  })
+}
+
+function pickLocalFolder() {
+  openFolderPickerForFolder(null)
 }
 
 function openUrlDialog() {
@@ -219,6 +240,54 @@ function mdItemsFromZipBuffer(buf: ArrayBuffer): ImportedItem[] {
     })
   }
   return items
+}
+
+async function onPickFolder(ev: Event) {
+  const input = ev.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = ''
+  if (!files.length) {
+    pendingFolderForImport.value = null
+    return
+  }
+
+  const items: ImportedItem[] = []
+  const errors: string[] = []
+
+  for (const file of files) {
+    const wp =
+      (file as File & { webkitRelativePath?: string }).webkitRelativePath?.trim() ?? file.name
+    const parsed = parseMdEntryFromWebkitPath(wp)
+    if (!parsed) continue
+    try {
+      const content = await readFileAsText(file)
+      items.push({
+        title: parsed.title,
+        content,
+        titleLocked: true,
+        folderSegments: parsed.folderSegments,
+      })
+    } catch {
+      errors.push(file.name)
+    }
+  }
+
+  if (items.length) {
+    emitImported(items)
+    if (errors.length) {
+      emit(
+        'error',
+        `部分文件未导入：${errors.join('、')}（已导入 ${items.length} 个文档）`,
+      )
+    }
+  } else {
+    pendingFolderForImport.value = null
+    if (errors.length) {
+      emit('error', `导入失败：${errors.join('、')}`)
+    } else {
+      emit('error', '所选文件夹中没有 .md 文件（已跳过非 .md 文件）')
+    }
+  }
 }
 
 async function onPickFile(ev: Event) {
@@ -347,6 +416,11 @@ onBeforeUnmount(() => {
           </button>
         </li>
         <li role="none">
+          <button type="button" class="doc-import-menu-item" role="menuitem" @click="pickLocalFolder">
+            上传文件夹…（仅 .md，保持子目录）
+          </button>
+        </li>
+        <li role="none">
           <button
             type="button"
             class="doc-import-menu-item"
@@ -369,6 +443,15 @@ onBeforeUnmount(() => {
       aria-hidden="true"
       tabindex="-1"
       @change="onPickFile"
+    />
+    <input
+      ref="folderInputRef"
+      type="file"
+      class="doc-import-hidden-file"
+      webkitdirectory
+      aria-hidden="true"
+      tabindex="-1"
+      @change="onPickFolder"
     />
 
     <Teleport to="body">

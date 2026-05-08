@@ -392,8 +392,8 @@ async function downloadActiveDocAsMd() {
   URL.revokeObjectURL(url)
 }
 
-async function onNewRootFolder(title: string) {
-  const folder = await lib.createFolder(null, title)
+async function onNewFolder(parentId: string | null, title: string) {
+  const folder = await lib.createFolder(parentId, title)
   docLibraryPanelRef.value?.expandFolder?.(folder.id)
 }
 
@@ -422,21 +422,54 @@ async function onMoveDoc(docId: string, folderId: string | null) {
 async function onImported(payload: DocLibraryImportPayload) {
   const { items, folderId } = payload
   if (!items.length) return
+
+  const pathCache = new Map<string, string>()
+  const baseKey = folderId ?? '__root__'
+
+  async function resolveTargetFolder(segments: string[] | undefined): Promise<string | null> {
+    const segs = (segments ?? []).filter((s) => s && s !== '.' && s !== '..')
+    let parentId: string | null = folderId ?? null
+    for (let i = 0; i < segs.length; i++) {
+      const subpath = segs.slice(0, i + 1).join('/')
+      const cacheKey = `${baseKey}::${subpath}`
+      const cached = pathCache.get(cacheKey)
+      if (cached) {
+        parentId = cached
+        continue
+      }
+      const title = segs[i]
+      const existing = folders.value.find((f) => f.parentId === parentId && f.title === title)
+      const fid = existing ? existing.id : (await lib.createFolder(parentId, title)).id
+      pathCache.set(cacheKey, fid)
+      parentId = fid
+    }
+    return parentId
+  }
+
   let firstId: string | null = null
   for (const it of items) {
+    const targetFolderId = await resolveTargetFolder(it.folderSegments)
     const doc = await lib.createDocFromContent(it.content, {
       title: it.title,
       titleLocked: it.titleLocked,
-      folderId: folderId ?? undefined,
+      folderId: targetFolderId ?? undefined,
     })
     if (!firstId) firstId = doc.id
   }
   if (firstId) await lib.setActive(firstId)
   if (folderId) docLibraryPanelRef.value?.expandFolder?.(folderId)
+  for (const fid of pathCache.values()) {
+    docLibraryPanelRef.value?.expandFolder?.(fid)
+  }
+  const hasSubdirs = items.some((it) => (it.folderSegments?.length ?? 0) > 0)
   showImportBanner(
-    folderId
-      ? `已导入 ${items.length} 篇文档到当前文件夹`
-      : `已导入 ${items.length} 篇文档`,
+    hasSubdirs
+      ? folderId
+        ? `已导入 ${items.length} 篇文档到当前文件夹（已保持子目录）`
+        : `已导入 ${items.length} 篇文档（已保持子目录）`
+      : folderId
+        ? `已导入 ${items.length} 篇文档到当前文件夹`
+        : `已导入 ${items.length} 篇文档`,
   )
 }
 
@@ -489,7 +522,7 @@ async function onDuplicate(id: string) {
         @download="downloadDocAsMd"
         @download-active="downloadActiveDocAsMd"
         @new-doc="onNewDoc"
-        @new-root-folder="onNewRootFolder"
+        @new-folder="onNewFolder"
         @new-doc-in-folder="onNewDocInFolder"
         @folder-rename="onFolderRename"
         @folder-delete="onFolderDelete"

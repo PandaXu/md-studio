@@ -44,17 +44,29 @@ const emit = defineEmits<{
   moveDoc: [docId: string, folderId: string | null]
   imported: [payload: DocLibraryImportPayload]
   importError: [message: string]
-  newRootFolder: [title: string]
+  newFolder: [parentId: string | null, title: string]
 }>()
 
 const importMenuRef = ref<InstanceType<typeof DocumentImportMenu> | null>(null)
 
 const newFolderDialogOpen = ref(false)
+const newFolderParentId = ref<string | null>(null)
 const newFolderNameDraft = ref('')
 const newFolderErr = ref<string | null>(null)
 const newFolderInputRef = ref<HTMLInputElement | null>(null)
 
 function openNewFolderDialog() {
+  newFolderParentId.value = null
+  newFolderNameDraft.value = ''
+  newFolderErr.value = null
+  newFolderDialogOpen.value = true
+  void nextTick(() => {
+    newFolderInputRef.value?.focus()
+  })
+}
+
+function openNewSubfolderDialog(parentId: string) {
+  newFolderParentId.value = parentId
   newFolderNameDraft.value = ''
   newFolderErr.value = null
   newFolderDialogOpen.value = true
@@ -66,6 +78,7 @@ function openNewFolderDialog() {
 function cancelNewFolderDialog() {
   newFolderDialogOpen.value = false
   newFolderErr.value = null
+  newFolderParentId.value = null
 }
 
 function confirmNewFolderDialog() {
@@ -74,10 +87,19 @@ function confirmNewFolderDialog() {
     newFolderErr.value = '请输入文件夹名称'
     return
   }
+  const parent = newFolderParentId.value
   newFolderDialogOpen.value = false
   newFolderErr.value = null
-  emit('newRootFolder', t)
+  newFolderParentId.value = null
+  emit('newFolder', parent, t)
 }
+
+const newFolderDialogTitle = computed(() => {
+  if (!newFolderParentId.value) return '新建文件夹'
+  const f = props.folders.find((x) => x.id === newFolderParentId.value)
+  const name = f?.title?.trim() || '文件夹'
+  return `在「${name}」下新建子文件夹`
+})
 
 const FOLDER_EXPANDED_KEY = 'markdown-editor-library-folder-expanded'
 
@@ -384,6 +406,21 @@ function onCtxFolderImportMd() {
   const id = ctxMenu.value.target.id
   closeContextMenu()
   importMenuRef.value?.openLocalPickerForFolder(id)
+}
+
+function onCtxFolderImportFolder() {
+  if (!ctxMenu.value || ctxMenu.value.target.kind !== 'folder') return
+  const id = ctxMenu.value.target.id
+  closeContextMenu()
+  importMenuRef.value?.openFolderPickerForFolder(id)
+}
+
+function onCtxNewSubfolder() {
+  if (!ctxMenu.value || ctxMenu.value.target.kind !== 'folder') return
+  const id = ctxMenu.value.target.id
+  closeContextMenu()
+  setFolderExpandedState({ ...expanded.value, [id]: true })
+  openNewSubfolderDialog(id)
 }
 
 function onCtxFolderDownloadZip() {
@@ -696,7 +733,7 @@ defineExpose({ expandFolder })
               class="doc-panel-kebab doc-panel-kebab--folder"
               :data-kebab-kind="'folder'"
               :data-kebab-id="row.folder.id"
-              :title="`${row.folder.title}：更多操作（新建、上传、下载 ZIP、重命名、删除）`"
+              :title="`${row.folder.title}：更多操作（新建、子文件夹、上传、下载 ZIP、重命名、删除）`"
               :aria-label="`${row.folder.title} 操作菜单`"
               aria-haspopup="menu"
               :aria-expanded="ctxMenuOpenForFolder(row.folder.id, 'kebab')"
@@ -715,8 +752,18 @@ defineExpose({ expandFolder })
                 </button>
               </li>
               <li role="none">
+                <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxNewSubfolder">
+                  <span class="doc-panel-ctx-ico" aria-hidden="true">📁</span>新建子文件夹
+                </button>
+              </li>
+              <li role="none">
                 <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderImportMd">
                   <span class="doc-panel-ctx-ico" aria-hidden="true">⬆</span>上传 Markdown…
+                </button>
+              </li>
+              <li role="none">
+                <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderImportFolder">
+                  <span class="doc-panel-ctx-ico" aria-hidden="true">⬆</span>上传文件夹…
                 </button>
               </li>
               <li role="none">
@@ -974,8 +1021,18 @@ defineExpose({ expandFolder })
             </button>
           </li>
           <li role="none">
+            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxNewSubfolder">
+              <span class="doc-panel-ctx-ico" aria-hidden="true">📁</span>新建子文件夹
+            </button>
+          </li>
+          <li role="none">
             <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderImportMd">
               <span class="doc-panel-ctx-ico" aria-hidden="true">⬆</span>上传 Markdown…
+            </button>
+          </li>
+          <li role="none">
+            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderImportFolder">
+              <span class="doc-panel-ctx-ico" aria-hidden="true">⬆</span>上传文件夹…
             </button>
           </li>
           <li role="none">
@@ -1011,7 +1068,7 @@ defineExpose({ expandFolder })
           class="doc-new-folder-dialog"
           @click.stop
         >
-          <h3 id="doc-new-folder-title" class="doc-new-folder-title">新建文件夹</h3>
+          <h3 id="doc-new-folder-title" class="doc-new-folder-title">{{ newFolderDialogTitle }}</h3>
           <label class="doc-new-folder-label">
             <span class="doc-new-folder-label-text">文件夹名称</span>
             <input
