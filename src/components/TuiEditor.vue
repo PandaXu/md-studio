@@ -95,21 +95,26 @@ async function decorateMermaidBlocks() {
     textarea.className = 'tui-mermaid-textarea'
     textarea.value = source.trimEnd()
     textarea.setAttribute('aria-label', 'Mermaid 源码编辑')
-    textarea.addEventListener('input', () => {
-      if (!editor) return
-      const current = editor.getMarkdown()
-      const next = replaceMermaidBlockAt(current, idx, textarea.value)
-      if (next !== current) emit('update:modelValue', next)
-    })
-    details.appendChild(textarea)
-
+    const previewTitle = document.createElement('div')
+    previewTitle.className = 'tui-mermaid-preview-title'
+    previewTitle.textContent = 'SVG 预览'
     const out = document.createElement('div')
     out.className = 'tui-mermaid-out'
     const errEl = document.createElement('div')
     errEl.className = 'tui-mermaid-error'
     errEl.setAttribute('role', 'alert')
 
+    textarea.addEventListener('input', () => {
+      if (!editor) return
+      const current = editor.getMarkdown()
+      const next = replaceMermaidBlockAt(current, idx, textarea.value)
+      if (next !== current) emit('update:modelValue', next)
+      void renderMermaidSvg(out, errEl, textarea.value)
+    })
+    details.appendChild(textarea)
+
     panel.appendChild(details)
+    panel.appendChild(previewTitle)
     panel.appendChild(out)
     panel.appendChild(errEl)
     pre.insertAdjacentElement('afterend', panel)
@@ -209,7 +214,7 @@ onBeforeUnmount(() => {
 }
 
 :deep(.tui-mermaid-out) {
-  padding: 0.65rem 0.6rem 0.35rem;
+  padding: 0.35rem 0.6rem 0.35rem;
   overflow: auto;
 }
 
@@ -223,5 +228,12 @@ onBeforeUnmount(() => {
   font-size: 0.8rem;
   color: var(--error-text, #991b1b);
   white-space: pre-wrap;
+}
+
+:deep(.tui-mermaid-preview-title) {
+  padding: 0.5rem 0.6rem 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted, #5c6578);
 }
 </style>

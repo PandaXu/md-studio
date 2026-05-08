@@ -52,6 +52,11 @@ const CONFIG: Config = {
     'role',
   ],
   ALLOW_DATA_ATTR: true,
+  // Allow base64 data URI images in markdown preview.
+  ADD_DATA_URI_TAGS: ['img'],
+  // Explicitly allow safe image data URIs, including SVG base64 payloads.
+  ALLOWED_URI_REGEXP:
+    /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$)|data:image\/(?:png|gif|jpe?g|webp|svg\+xml);base64,[a-z0-9+/=\s]+)$/i,
 }
 
 export function sanitizeMarkdownHtml(dirty: string): string {

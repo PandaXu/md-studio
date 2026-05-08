@@ -6,6 +6,10 @@ const md = new MarkdownIt({ html: false, linkify: true, breaks: false })
 md.use(mdMultimdTable)
 md.use(mdTaskLists, { enabled: true, label: true })
 
+const defaultValidateLink = md.validateLink.bind(md)
+const SVG_DATA_URI_RE = /^data:image\/svg\+xml;base64,[a-z0-9+/=\s]+$/i
+md.validateLink = (url: string) => SVG_DATA_URI_RE.test(url) || defaultValidateLink(url)
+
 // Inject data-line attributes from token.map into block-level opening tags,
 // so the preview DOM can be mapped back to source line numbers on dblclick.
 const BLOCK_TAGS = [

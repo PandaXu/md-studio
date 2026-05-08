@@ -5,10 +5,18 @@
 ## 功能概览
 
 - **Markdown 页**
-  - Monaco 编辑器（`markdown` 模式）
+  - 视图布局：
+    - 左右并列：固定 `Monaco` 源码编辑
+    - 仅 Markdown 源码：支持编辑模式切换 `Raw (Monaco)` / `WYSIWYG (TUI Editor)`
+    - 仅预览：隐藏源码编辑与编辑模式选项
   - GFM 表格/任务列表 + `DOMPurify` 消毒渲染
-  - 正文浅色/深色阅读模式
+  - 正文浅色/深色阅读模式（仅非“仅 Markdown 源码”布局显示）
   - 文中 ` ```mermaid ` 代码块分块渲染，支持源码折叠/展开
+  - WYSIWYG 模式下 Mermaid 代码块支持：
+    - SVG 预览
+    - 源码折叠编辑
+    - 随输入实时更新
+  - 预览支持 Base64 图片（含 `data:image/svg+xml;base64,...`）
   - 导出 `.md` 与 `.html`（HTML 内联当前已渲染 SVG）
   - 默认示例：`src/samples/harness-era-article.md`
 

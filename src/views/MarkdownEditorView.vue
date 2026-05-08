@@ -456,7 +456,7 @@ function exportHtml() {
   <div class="editor-page">
     <header class="toolbar">
       <h1 class="title">Markdown 编辑与预览</h1>
-      <div class="theme-group" role="group" aria-label="阅读模式">
+      <div v-if="layout !== 'code'" class="theme-group" role="group" aria-label="阅读模式">
         <span class="theme-label">正文</span>
         <button
           type="button"
@@ -477,7 +477,7 @@ function exportHtml() {
           深色
         </button>
       </div>
-      <div class="theme-group" role="group" aria-label="图表主题">
+      <div v-if="layout !== 'code'" class="theme-group" role="group" aria-label="图表主题">
         <span class="theme-label">图表主题</span>
         <button
           v-for="t in MERMAID_THEMES"
@@ -492,7 +492,7 @@ function exportHtml() {
           {{ t.id }}
         </button>
       </div>
-      <div v-if="layout !== 'preview'" class="theme-group" role="group" aria-label="编辑模式">
+      <div v-if="layout === 'code'" class="theme-group" role="group" aria-label="编辑模式">
         <span class="theme-label">编辑模式</span>
         <button
           type="button"
@@ -575,9 +575,11 @@ function exportHtml() {
     </header>
 
     <p class="hint">
-      阅读模式：<strong>{{ readingLabel }}</strong>；图表主题：<strong>{{ activeChartThemeLabel }}</strong>；布局：
-      <strong>{{ LAYOUT_OPTIONS.find((o) => o.value === layout)?.label }}</strong>
-      <template v-if="layout !== 'preview'">
+      <template v-if="layout !== 'code'">
+        阅读模式：<strong>{{ readingLabel }}</strong>；图表主题：<strong>{{ activeChartThemeLabel }}</strong>；
+      </template>
+      布局：<strong>{{ LAYOUT_OPTIONS.find((o) => o.value === layout)?.label }}</strong>
+      <template v-if="layout === 'code'">
         ；编辑模式：<strong>{{ editModeLabel }}</strong>
       </template>
     </p>
@@ -586,8 +588,12 @@ function exportHtml() {
       <section v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
         <h2 class="pane-title">源码</h2>
         <div class="pane-body">
-          <SourceEditor v-if="editMode === 'raw'" v-model="source" language="markdown" />
-          <TuiEditor v-else v-model="source" :chart-theme="chartTheme" />
+          <SourceEditor
+            v-if="layout === 'split' || (layout === 'code' && editMode === 'raw')"
+            v-model="source"
+            language="markdown"
+          />
+          <TuiEditor v-else-if="layout === 'code'" v-model="source" :chart-theme="chartTheme" />
         </div>
       </section>
       <section v-show="layout !== 'code'" class="pane preview-pane" aria-label="预览">
