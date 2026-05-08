@@ -91,9 +91,16 @@ function closeContextMenu() {
 function onGlobalCtxPointerDown(ev: PointerEvent) {
   if (!ctxMenu.value) return
   if (ev.button !== 0 && ev.pointerType === 'mouse') return
-  const root = ctxMenuEl.value
-  const t = ev.target as Node
-  if (root && !root.contains(t)) closeContextMenu()
+  const t = ev.target as HTMLElement | null
+  if (
+    ctxMenu.value.mode === 'kebab' &&
+    t?.closest('.doc-panel-kebab')?.getAttribute('data-kebab-id') === ctxMenu.value.id
+  ) {
+    return
+  }
+  const refVal = ctxMenuEl.value as HTMLElement | HTMLElement[] | null
+  const root = Array.isArray(refVal) ? (refVal[0] ?? null) : refVal
+  if (root && t && !root.contains(t)) closeContextMenu()
 }
 
 function onGlobalCtxKeydown(ev: KeyboardEvent) {
@@ -252,44 +259,47 @@ function onClearSearch() {
         </div>
         <div class="doc-panel-item-meta">{{ formatTimestamp(doc.updatedAt) }}</div>
 
-        <button
-          type="button"
-          class="doc-panel-kebab"
-          :aria-label="`${doc.title} 操作菜单`"
-          aria-haspopup="menu"
-          :aria-expanded="ctxMenu?.id === doc.id && ctxMenu?.mode === 'kebab'"
-          @click.stop="openKebabMenu(doc)"
-        >⋯</button>
+        <template v-if="renamingId !== doc.id">
+          <button
+            type="button"
+            class="doc-panel-kebab"
+            :data-kebab-id="doc.id"
+            :aria-label="`${doc.title || '未命名'} 操作菜单`"
+            aria-haspopup="menu"
+            :aria-expanded="ctxMenu?.id === doc.id && ctxMenu?.mode === 'kebab'"
+            @click.stop="openKebabMenu(doc)"
+          >⋯</button>
 
-        <ul
-          v-if="ctxMenu?.id === doc.id && ctxMenu?.mode === 'kebab'"
-          ref="ctxMenuEl"
-          class="doc-panel-ctx-menu doc-panel-ctx-menu--kebab"
-          role="menu"
-          @click.self="closeContextMenu"
-        >
-          <li role="none">
-            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxRename">重命名</button>
-          </li>
-          <li role="none">
-            <button
-              type="button"
-              role="menuitem"
-              class="doc-panel-ctx-item"
-              :disabled="!ctxLockedOnly"
-              @click="onCtxUnlock"
-            >恢复跟随 H1</button>
-          </li>
-          <li role="none">
-            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDownload">下载</button>
-          </li>
-          <li role="none">
-            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDuplicate">复制一份</button>
-          </li>
-          <li role="none">
-            <button type="button" role="menuitem" class="doc-panel-ctx-item danger" @click="onCtxDelete">删除</button>
-          </li>
-        </ul>
+          <ul
+            v-if="ctxMenu?.id === doc.id && ctxMenu?.mode === 'kebab'"
+            ref="ctxMenuEl"
+            class="doc-panel-ctx-menu doc-panel-ctx-menu--kebab"
+            role="menu"
+            @click.self="closeContextMenu"
+          >
+            <li role="none">
+              <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxRename">重命名</button>
+            </li>
+            <li role="none">
+              <button
+                type="button"
+                role="menuitem"
+                class="doc-panel-ctx-item"
+                :disabled="!ctxLockedOnly"
+                @click="onCtxUnlock"
+              >恢复跟随 H1</button>
+            </li>
+            <li role="none">
+              <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDownload">下载</button>
+            </li>
+            <li role="none">
+              <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDuplicate">复制一份</button>
+            </li>
+            <li role="none">
+              <button type="button" role="menuitem" class="doc-panel-ctx-item danger" @click="onCtxDelete">删除</button>
+            </li>
+          </ul>
+        </template>
       </li>
     </ul>
     <p v-else class="doc-panel-empty-list">
