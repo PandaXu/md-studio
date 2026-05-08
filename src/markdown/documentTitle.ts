@@ -37,9 +37,8 @@ export function sanitizeRenameInput(input: string, currentTitle: string): string
 }
 
 export function safeFilenameFromTitle(title: string): string {
-  const fallback = `markdown-${Date.now()}.md`
   const stripped = title.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').trim()
-  if (!stripped) return fallback
+  if (!stripped) return 'markdown.md'
   const clipped = stripped.length > 80 ? stripped.slice(0, 80) : stripped
   return `${clipped}.md`
 }
@@ -51,7 +50,15 @@ export function deriveTitleFromUrl(url: string): string {
     const last = segments[segments.length - 1]
     if (last) {
       const stripped = last.replace(/\.(md|markdown)$/i, '')
-      if (stripped) return clipTitle(decodeURIComponent(stripped)) || u.hostname
+      if (stripped) {
+        let decoded: string | null = null
+        try {
+          decoded = decodeURIComponent(stripped)
+        } catch {
+          /* fall back to hostname if percent-encoding is malformed */
+        }
+        return clipTitle(decoded ?? '') || u.hostname || 'URL 导入'
+      }
     }
     return u.hostname || 'URL 导入'
   } catch {
