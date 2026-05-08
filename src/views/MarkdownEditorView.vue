@@ -7,6 +7,7 @@ import {
   isUrlFetchEnabled,
 } from '@/constants/mdFetchApi'
 import SourceEditor from '@/components/SourceEditor.vue'
+import TuiEditor from '@/components/TuiEditor.vue'
 import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
 import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
@@ -16,11 +17,13 @@ import defaultSample from '@/samples/harness-era-article.md?raw'
 
 type LayoutMode = 'split' | 'code' | 'preview'
 type ReadingMode = 'light' | 'dark'
+type EditMode = 'raw' | 'wysiwyg'
 
 const SOURCE_KEY = 'markdown-editor-source'
 const LAYOUT_KEY = 'markdown-editor-layout'
 const READING_KEY = 'markdown-editor-reading'
 const CHART_THEME_KEY = 'markdown-editor-mermaid-theme'
+const EDIT_MODE_KEY = 'markdown-editor-edit-mode'
 
 const LAYOUT_OPTIONS: { value: LayoutMode; label: string }[] = [
   { value: 'split', label: '左右并列' },
@@ -101,11 +104,30 @@ function persistChartTheme(id: MermaidThemeId) {
   }
 }
 
+function loadStoredEditMode(): EditMode {
+  try {
+    const v = localStorage.getItem(EDIT_MODE_KEY)
+    if (v === 'raw' || v === 'wysiwyg') return v
+  } catch {
+    /* ignore */
+  }
+  return 'raw'
+}
+
+function persistEditMode(mode: EditMode) {
+  try {
+    localStorage.setItem(EDIT_MODE_KEY, mode)
+  } catch {
+    /* ignore */
+  }
+}
+
 const source = ref(loadStoredSource() ?? DEFAULT_SAMPLE)
 const debouncedSource = ref(source.value)
 const layout = ref<LayoutMode>(loadStoredLayout())
 const reading = ref<ReadingMode>(loadStoredReading())
 const chartTheme = ref<MermaidThemeId>(loadStoredChartTheme())
+const editMode = ref<EditMode>(loadStoredEditMode())
 const previewHost = ref<HTMLElement | null>(null)
 
 const topError = ref<string | null>(null)
@@ -262,6 +284,7 @@ const readingLabel = computed(() => (reading.value === 'light' ? '浅色' : '深
 const activeChartThemeLabel = computed(
   () => MERMAID_THEMES.find((t) => t.id === chartTheme.value)?.label ?? chartTheme.value,
 )
+const editModeLabel = computed(() => (editMode.value === 'raw' ? 'Raw' : 'WYSIWYG'))
 
 const previewWrapClass = computed(() =>
   reading.value === 'light' ? 'reading-light' : 'reading-dark',
@@ -275,6 +298,11 @@ function setChartTheme(next: MermaidThemeId) {
 function setReading(next: ReadingMode) {
   reading.value = next
   persistReading(next)
+}
+
+function setEditMode(next: EditMode) {
+  editMode.value = next
+  persistEditMode(next)
 }
 
 async function runMarkdownPipeline() {
@@ -322,6 +350,7 @@ watch(layout, (mode) => {
     window.dispatchEvent(new Event('resize'))
   })
 })
+watch(editMode, persistEditMode)
 
 onMounted(() => {
   debouncedSource.value = source.value
@@ -463,6 +492,27 @@ function exportHtml() {
           {{ t.id }}
         </button>
       </div>
+      <div v-if="layout !== 'preview'" class="theme-group" role="group" aria-label="编辑模式">
+        <span class="theme-label">编辑模式</span>
+        <button
+          type="button"
+          class="theme-btn"
+          :class="{ active: editMode === 'raw' }"
+          :aria-pressed="editMode === 'raw'"
+          @click="setEditMode('raw')"
+        >
+          Raw
+        </button>
+        <button
+          type="button"
+          class="theme-btn"
+          :class="{ active: editMode === 'wysiwyg' }"
+          :aria-pressed="editMode === 'wysiwyg'"
+          @click="setEditMode('wysiwyg')"
+        >
+          WYSIWYG
+        </button>
+      </div>
       <div class="toolbar-actions">
         <label class="field-inline">
           <span class="field-label">视图布局</span>
@@ -527,13 +577,17 @@ function exportHtml() {
     <p class="hint">
       阅读模式：<strong>{{ readingLabel }}</strong>；图表主题：<strong>{{ activeChartThemeLabel }}</strong>；布局：
       <strong>{{ LAYOUT_OPTIONS.find((o) => o.value === layout)?.label }}</strong>
+      <template v-if="layout !== 'preview'">
+        ；编辑模式：<strong>{{ editModeLabel }}</strong>
+      </template>
     </p>
 
     <main class="main" :class="`layout-${layout}`">
       <section v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
         <h2 class="pane-title">源码</h2>
         <div class="pane-body">
-          <SourceEditor v-model="source" language="markdown" />
+          <SourceEditor v-if="editMode === 'raw'" v-model="source" language="markdown" />
+          <TuiEditor v-else v-model="source" :chart-theme="chartTheme" />
         </div>
       </section>
       <section v-show="layout !== 'code'" class="pane preview-pane" aria-label="预览">
