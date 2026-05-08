@@ -12,6 +12,7 @@
   "dependencies": {
     "@toast-ui/editor": "^3.2.2",
     "dompurify": "^3.4.2",
+    "fflate": "^0.8.2",
     "markdown-it": "^14.1.1",
     "markdown-it-multimd-table": "^4.2.3",
     "markdown-it-task-lists": "^2.1.1",

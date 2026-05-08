@@ -1,5 +1,5 @@
 import mermaid from 'mermaid'
-import type { MermaidThemeId } from '@/themes'
+import type { EnterprisePreviewTone, MermaidThemeId } from '@/themes'
 import { mermaidInitForTheme } from '@/themes'
 
 export async function renderMermaidBlocksIn(
@@ -7,8 +7,9 @@ export async function renderMermaidBlocksIn(
   chartTheme: MermaidThemeId,
   renderSeq: number,
   getCurrentSeq: () => number,
+  opts?: { enterprisePreview?: EnterprisePreviewTone },
 ): Promise<void> {
-  mermaid.initialize(mermaidInitForTheme(chartTheme))
+  mermaid.initialize(mermaidInitForTheme(chartTheme, opts))
   const blocks = root.querySelectorAll<HTMLElement>('.mermaid-block')
   for (const block of blocks) {
     if (getCurrentSeq() !== renderSeq) return

@@ -243,12 +243,34 @@
   display: grid;
   grid-template-columns: var(--doc-sidebar-w, 240px) 1fr;
   gap: 0.75rem;
-  align-items: stretch;
+  /* 与右侧编辑区解耦高度：右侧可撑高整页，左侧用 sticky 钉在视口内 */
+  align-items: start;
   min-height: calc(100vh - 4rem);
 }
 
 .editor-shell-with-sidebar[data-sidebar-collapsed='true'] {
   grid-template-columns: 1fr;
+}
+
+/* 文档库钉在视口内滚动，不随右侧长文档整体卷出屏幕 */
+.editor-shell-with-sidebar:not([data-sidebar-collapsed='true']) > .doc-sidebar-host {
+  position: sticky;
+  top: 0.75rem;
+  align-self: start;
+  width: var(--doc-sidebar-w, 240px);
+  min-width: 200px;
+  max-height: calc(100dvh - 1.5rem);
+  height: calc(100dvh - 1.5rem);
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-shell-with-sidebar:not([data-sidebar-collapsed='true']) > .doc-sidebar-host .doc-panel {
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  height: 100%;
 }
 
 .editor-shell-with-sidebar > .editor-page {

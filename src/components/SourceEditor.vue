@@ -2,12 +2,16 @@
 import * as monaco from 'monaco-editor'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+export type MonacoEditorTheme = 'vs' | 'vs-dark'
+
 const props = withDefaults(
   defineProps<{
     modelValue: string
     language?: string
+    /** Monaco 主题：深色用 `vs-dark` */
+    editorTheme?: MonacoEditorTheme
   }>(),
-  { language: 'plaintext' },
+  { language: 'plaintext', editorTheme: 'vs' },
 )
 
 const emit = defineEmits<{
@@ -26,7 +30,7 @@ onMounted(() => {
   editor = monaco.editor.create(host.value, {
     value: props.modelValue,
     language: props.language,
-    theme: 'vs',
+    theme: props.editorTheme,
     automaticLayout: true,
     minimap: { enabled: false },
     fontSize: 14,
@@ -57,6 +61,14 @@ watch(
   (lang) => {
     if (!editor) return
     ;(editor.getModel() as ITextModelWithSetLanguage | null)?.setLanguageId(lang)
+  },
+)
+
+watch(
+  () => props.editorTheme,
+  (t) => {
+    if (!editor) return
+    monaco.editor.setTheme(t)
   },
 )
 

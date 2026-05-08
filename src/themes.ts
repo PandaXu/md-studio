@@ -99,8 +99,93 @@ const ENTERPRISE_THEME_CSS = `
   }
 `
 
-export function mermaidInitForTheme(theme: MermaidThemeId): MermaidConfig {
+/** 深色预览：背景偏暗，连线/箭头统一为灰色 */
+const ENTERPRISE_GRAY_STROKE = '#94a3b8'
+
+const ENTERPRISE_THEME_VARIABLES_DARK: Record<string, string> = {
+  darkMode: 'true',
+  background: '#0f1419',
+  fontFamily: ENTERPRISE_THEME_VARIABLES.fontFamily,
+
+  primaryColor: '#1e293b',
+  primaryTextColor: '#e5e7eb',
+  primaryBorderColor: ENTERPRISE_GRAY_STROKE,
+
+  secondaryColor: '#334155',
+  secondaryTextColor: '#e5e7eb',
+  secondaryBorderColor: ENTERPRISE_GRAY_STROKE,
+
+  tertiaryColor: '#1e3a2f',
+  tertiaryTextColor: '#e5e7eb',
+  tertiaryBorderColor: ENTERPRISE_GRAY_STROKE,
+
+  lineColor: ENTERPRISE_GRAY_STROKE,
+  textColor: '#e5e7eb',
+
+  clusterBkg: '#1f2937',
+  clusterBorder: ENTERPRISE_GRAY_STROKE,
+  titleColor: '#e5e7eb',
+
+  edgeLabelBackground: '#0f1419',
+  mainBkg: '#1e293b',
+  nodeBorder: ENTERPRISE_GRAY_STROKE,
+  nodeTextColor: '#e5e7eb',
+
+  actorBkg: '#1e293b',
+  actorBorder: ENTERPRISE_GRAY_STROKE,
+  actorTextColor: '#e5e7eb',
+  signalColor: ENTERPRISE_GRAY_STROKE,
+  labelBoxBkgColor: '#1f2937',
+  labelBoxBorderColor: ENTERPRISE_GRAY_STROKE,
+  labelTextColor: '#e5e7eb',
+  loopTextColor: '#e5e7eb',
+  activationBorderColor: ENTERPRISE_GRAY_STROKE,
+  activationBkg: '#1e293b',
+  sequenceNumberColor: '#e5e7eb',
+}
+
+const ENTERPRISE_THEME_CSS_DARK = `
+  .node rect,
+  .node circle,
+  .node ellipse,
+  .node polygon {
+    rx: 0 !important;
+    ry: 0 !important;
+  }
+  .flowchart-link,
+  .edge-thickness-normal {
+    stroke: ${ENTERPRISE_GRAY_STROKE} !important;
+  }
+  .edgePath .path {
+    stroke: ${ENTERPRISE_GRAY_STROKE} !important;
+  }
+  .marker,
+  .marker path {
+    fill: ${ENTERPRISE_GRAY_STROKE} !important;
+    stroke: ${ENTERPRISE_GRAY_STROKE} !important;
+  }
+`
+
+export type EnterprisePreviewTone = 'light' | 'dark'
+
+export function mermaidInitForTheme(
+  theme: MermaidThemeId,
+  opts?: { enterprisePreview?: EnterprisePreviewTone },
+): MermaidConfig {
   if (theme === 'enterprise') {
+    const tone = opts?.enterprisePreview ?? 'light'
+    if (tone === 'dark') {
+      return {
+        startOnLoad: false,
+        theme: 'base',
+        look: 'classic',
+        themeVariables: ENTERPRISE_THEME_VARIABLES_DARK,
+        themeCSS: ENTERPRISE_THEME_CSS_DARK,
+        fontFamily: ENTERPRISE_THEME_VARIABLES.fontFamily,
+        securityLevel: 'strict',
+        suppressErrorRendering: true,
+      }
+    }
     return {
       startOnLoad: false,
       theme: 'base',

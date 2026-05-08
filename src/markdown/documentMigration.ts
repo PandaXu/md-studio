@@ -1,4 +1,4 @@
-import type { Doc, DocStore } from './documentStore'
+import { isDocRecord, type Doc, type DocStore } from './documentStore'
 import { deriveTitle, nextUntitledOrdinal } from './documentTitle'
 
 const LEGACY_SOURCE_KEY = 'markdown-editor-source'
@@ -41,7 +41,8 @@ export async function runMigrationIfNeeded(deps: MigrationDeps): Promise<string>
   const count = await deps.store.count()
   if (count > 0) {
     const all = await deps.store.getAll()
-    const sorted = [...all].sort((a, b) => b.updatedAt - a.updatedAt)
+    const docsOnly = all.filter(isDocRecord)
+    const sorted = [...docsOnly].sort((a, b) => b.updatedAt - a.updatedAt)
     return sorted[0]?.id ?? ''
   }
 

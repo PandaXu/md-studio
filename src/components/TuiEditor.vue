@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import Editor from '@toast-ui/editor'
 import '@toast-ui/editor/dist/toastui-editor.css'
+import '@toast-ui/editor/dist/theme/toastui-editor-dark.css'
 import mermaid from 'mermaid'
 import { mermaidInitForTheme, type MermaidThemeId } from '@/themes'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-const props = defineProps<{
-  modelValue: string
-  chartTheme: MermaidThemeId
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: string
+    chartTheme: MermaidThemeId
+    /** 与全站阅读模式同步：深色时使用 Toast UI dark 主题 */
+    reading?: 'light' | 'dark'
+  }>(),
+  { reading: 'light' },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -33,13 +39,19 @@ function replaceMermaidBlockAt(markdown: string, blockIndex: number, newCode: st
   })
 }
 
+function mermaidOpts() {
+  return {
+    enterprisePreview: props.reading === 'dark' ? ('dark' as const) : ('light' as const),
+  }
+}
+
 async function renderMermaidSvg(container: HTMLElement, errEl: HTMLElement, code: string): Promise<void> {
   container.innerHTML = ''
   errEl.textContent = ''
   const trimmed = code.trim()
   if (!trimmed) return
   try {
-    mermaid.initialize(mermaidInitForTheme(props.chartTheme))
+    mermaid.initialize(mermaidInitForTheme(props.chartTheme, mermaidOpts()))
     await mermaid.parse(trimmed)
     const id = `mmd-tui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const { svg } = await mermaid.render(id, trimmed)
@@ -122,23 +134,36 @@ async function decorateMermaidBlocks() {
   }
 }
 
-onMounted(() => {
-  if (!host.value) return
-  editor = new Editor({
-    el: host.value,
-    initialValue: props.modelValue,
-    initialEditType: 'wysiwyg',
-    previewStyle: 'vertical',
-    hideModeSwitch: true,
-    height: '100%',
-  })
+function toastTheme(): 'dark' | 'default' {
+  return props.reading === 'dark' ? 'dark' : 'default'
+}
 
+function wireChangeHandler() {
+  if (!editor) return
   editor.on('change', () => {
     if (!editor || syncingFromParent) return
     emit('update:modelValue', editor.getMarkdown())
     queueDecorateMermaidBlocks()
   })
+}
+
+function mountToastEditor(initialMarkdown: string) {
+  if (!host.value) return
+  editor = new Editor({
+    el: host.value,
+    initialValue: initialMarkdown,
+    initialEditType: 'wysiwyg',
+    previewStyle: 'vertical',
+    hideModeSwitch: true,
+    height: '100%',
+    theme: toastTheme(),
+  })
+  wireChangeHandler()
   queueDecorateMermaidBlocks()
+}
+
+onMounted(() => {
+  mountToastEditor(props.modelValue)
 })
 
 watch(
@@ -158,6 +183,20 @@ watch(
   () => props.chartTheme,
   () => {
     queueDecorateMermaidBlocks()
+  },
+)
+
+watch(
+  () => props.reading,
+  async () => {
+    if (!host.value) return
+    const md = editor?.getMarkdown() ?? props.modelValue
+    editor?.destroy()
+    editor = null
+    await new Promise<void>((r) => {
+      requestAnimationFrame(() => r())
+    })
+    mountToastEditor(md)
   },
 )
 

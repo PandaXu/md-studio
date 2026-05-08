@@ -5,21 +5,20 @@ import SourceEditor from '@/components/SourceEditor.vue'
 import TuiEditor from '@/components/TuiEditor.vue'
 import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
 import DocumentLibraryPanel from '@/components/DocumentLibraryPanel.vue'
+import { useAppReading } from '@/composables/useAppReading'
 import { useDocumentLibrary } from '@/composables/useDocumentLibrary'
 import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
 import { sanitizeMarkdownHtml } from '@/markdown/sanitize'
-import { MERMAID_THEMES, type MermaidThemeId } from '@/themes'
+import type { MermaidThemeId } from '@/themes'
 
 type LayoutMode = 'split' | 'code' | 'preview'
-type ReadingMode = 'light' | 'dark'
 type EditMode = 'raw' | 'wysiwyg'
 
 const LAYOUT_KEY = 'markdown-editor-layout'
-const READING_KEY = 'markdown-editor-reading'
-const CHART_THEME_KEY = 'markdown-editor-mermaid-theme'
 const EDIT_MODE_KEY = 'markdown-editor-edit-mode'
 const SIDEBAR_COLLAPSED_KEY = 'markdown-editor-library-collapsed'
+const SIDEBAR_WIDTH_PX_KEY = 'markdown-editor-library-sidebar-px'
 
 const LAYOUT_OPTIONS: { value: LayoutMode; label: string }[] = [
   { value: 'split', label: '左右并列' },
@@ -38,27 +37,8 @@ function persistLayout(mode: LayoutMode) {
   try { localStorage.setItem(LAYOUT_KEY, mode) } catch {}
 }
 
-function loadStoredReading(): ReadingMode {
-  try {
-    const v = localStorage.getItem(READING_KEY)
-    if (v === 'light' || v === 'dark') return v
-  } catch {}
-  return 'light'
-}
-function persistReading(mode: ReadingMode) {
-  try { localStorage.setItem(READING_KEY, mode) } catch {}
-}
-
-function loadStoredChartTheme(): MermaidThemeId {
-  try {
-    const v = localStorage.getItem(CHART_THEME_KEY)
-    if (v === 'default' || v === 'dark' || v === 'forest' || v === 'enterprise') return v
-  } catch {}
-  return 'default'
-}
-function persistChartTheme(id: MermaidThemeId) {
-  try { localStorage.setItem(CHART_THEME_KEY, id) } catch {}
-}
+/** Markdown 预览 / TUI 内 Mermaid 固定为企业风主题 */
+const MARKDOWN_MERMAID_THEME: MermaidThemeId = 'enterprise'
 
 function loadStoredEditMode(): EditMode {
   try {
@@ -78,6 +58,78 @@ function persistSidebarCollapsed(v: boolean) {
   try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, v ? '1' : '0') } catch {}
 }
 
+function docSidebarMaxWidthPx(): number {
+  if (typeof window === 'undefined') return 800
+  return Math.max(280, Math.min(800, window.innerWidth - 320))
+}
+
+function clampDocSidebarWidth(px: number): number {
+  return Math.min(Math.max(Math.round(px), 200), docSidebarMaxWidthPx())
+}
+
+function loadStoredSidebarWidthPx(): number {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_WIDTH_PX_KEY)
+    if (raw != null) {
+      const n = Number(raw)
+      if (Number.isFinite(n)) return clampDocSidebarWidth(n)
+    }
+  } catch {}
+  return clampDocSidebarWidth(260)
+}
+
+function persistSidebarWidthPx() {
+  try {
+    localStorage.setItem(SIDEBAR_WIDTH_PX_KEY, String(sidebarWidthPx.value))
+  } catch {}
+}
+
+const windowWidthForSidebar = ref(typeof window !== 'undefined' ? window.innerWidth : 1200)
+const sidebarWidthPx = ref(loadStoredSidebarWidthPx())
+
+const sidebarAriaMax = computed(() =>
+  Math.max(280, Math.min(800, windowWidthForSidebar.value - 320)),
+)
+
+const docShellInlineStyle = computed(() => {
+  if (sidebarCollapsed.value) return undefined
+  return { '--doc-sidebar-w': `${sidebarWidthPx.value}px` } as Record<string, string>
+})
+
+let sidebarResizeStartX = 0
+let sidebarResizeStartW = 0
+
+function onDocSidebarResizeMove(ev: PointerEvent) {
+  const dx = ev.clientX - sidebarResizeStartX
+  sidebarWidthPx.value = clampDocSidebarWidth(sidebarResizeStartW + dx)
+}
+
+function onDocSidebarResizeUp() {
+  document.removeEventListener('pointermove', onDocSidebarResizeMove)
+  document.removeEventListener('pointerup', onDocSidebarResizeUp)
+  document.removeEventListener('pointercancel', onDocSidebarResizeUp)
+  document.body.style.removeProperty('cursor')
+  document.body.style.removeProperty('user-select')
+  persistSidebarWidthPx()
+}
+
+function onDocSidebarResizeDown(ev: PointerEvent) {
+  if (ev.button !== 0) return
+  ev.preventDefault()
+  sidebarResizeStartX = ev.clientX
+  sidebarResizeStartW = sidebarWidthPx.value
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  document.addEventListener('pointermove', onDocSidebarResizeMove)
+  document.addEventListener('pointerup', onDocSidebarResizeUp)
+  document.addEventListener('pointercancel', onDocSidebarResizeUp)
+}
+
+function onWindowResizeDocSidebar() {
+  windowWidthForSidebar.value = window.innerWidth
+  sidebarWidthPx.value = clampDocSidebarWidth(sidebarWidthPx.value)
+}
+
 const lib = useDocumentLibrary()
 const {
   status,
@@ -87,14 +139,21 @@ const {
   activeContent,
   searchQuery,
   filteredDocs,
+  docs,
+  folders,
+  treeMode,
+  hasLibraryItems,
   hasDocs,
 } = lib
 
+const displayPanelDocs = computed(() => (treeMode.value ? docs.value : filteredDocs.value))
+
 const layout = ref<LayoutMode>(loadStoredLayout())
-const reading = ref<ReadingMode>(loadStoredReading())
-const chartTheme = ref<MermaidThemeId>(loadStoredChartTheme())
+const { reading, setReading } = useAppReading()
 const editMode = ref<EditMode>(loadStoredEditMode())
 const sidebarCollapsed = ref<boolean>(loadStoredSidebarCollapsed())
+
+const docLibraryPanelRef = ref<{ expandFolder?: (id: string) => void } | null>(null)
 
 const debouncedSource = ref<string>(activeContent.value)
 const previewHost = ref<HTMLElement | null>(null)
@@ -143,15 +202,10 @@ watch(activeId, () => {
   })
 })
 
-const readingLabel = computed(() => (reading.value === 'light' ? '浅色' : '深色'))
-const activeChartThemeLabel = computed(
-  () => MERMAID_THEMES.find((t) => t.id === chartTheme.value)?.label ?? chartTheme.value,
-)
-const editModeLabel = computed(() => (editMode.value === 'raw' ? 'Raw' : 'WYSIWYG'))
-const previewWrapClass = computed(() => (reading.value === 'light' ? 'reading-light' : 'reading-dark'))
+const readingPageClass = computed(() => (reading.value === 'light' ? 'reading-light' : 'reading-dark'))
 
-function setChartTheme(next: MermaidThemeId) { chartTheme.value = next; persistChartTheme(next) }
-function setReading(next: ReadingMode) { reading.value = next; persistReading(next) }
+const monacoEditorTheme = computed(() => (reading.value === 'dark' ? 'vs-dark' : 'vs'))
+
 function setEditMode(next: EditMode) { editMode.value = next; persistEditMode(next) }
 
 async function runMarkdownPipeline() {
@@ -179,11 +233,12 @@ async function runMarkdownPipeline() {
   host.innerHTML = clean
   await nextTick()
   if (seq !== pipelineSeq) return
-  await renderMermaidBlocksIn(host, chartTheme.value, seq, () => pipelineSeq)
+  await renderMermaidBlocksIn(host, MARKDOWN_MERMAID_THEME, seq, () => pipelineSeq, {
+    enterprisePreview: reading.value === 'dark' ? 'dark' : 'light',
+  })
 }
 
 watch(debouncedSource, runMarkdownPipeline, { flush: 'post' })
-watch(chartTheme, () => { void runMarkdownPipeline() })
 watch(layout, (mode) => {
   persistLayout(mode)
   void nextTick(() => { window.dispatchEvent(new Event('resize')) })
@@ -191,15 +246,23 @@ watch(layout, (mode) => {
 watch(editMode, persistEditMode)
 watch(sidebarCollapsed, persistSidebarCollapsed)
 
-watch(reading, (mode) => {
-  document.documentElement.setAttribute('data-reading', mode)
-}, { immediate: true })
+watch(reading, () => {
+  void runMarkdownPipeline()
+})
 
 onMounted(() => {
   debouncedSource.value = activeContent.value
   void runMarkdownPipeline()
+  window.addEventListener('resize', onWindowResizeDocSidebar)
+  onWindowResizeDocSidebar()
 })
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', onWindowResizeDocSidebar)
+  document.removeEventListener('pointermove', onDocSidebarResizeMove)
+  document.removeEventListener('pointerup', onDocSidebarResizeUp)
+  document.removeEventListener('pointercancel', onDocSidebarResizeUp)
+  document.body.style.removeProperty('cursor')
+  document.body.style.removeProperty('user-select')
   if (debounceTimer) clearTimeout(debounceTimer)
   if (importBannerTimer) {
     clearTimeout(importBannerTimer)
@@ -284,6 +347,47 @@ async function downloadDocAsMd(id: string) {
   URL.revokeObjectURL(url)
 }
 
+async function downloadActiveDocAsMd() {
+  await lib.flush()
+  const out = lib.exportActiveAsMarkdown()
+  if (!out) return
+  const url = URL.createObjectURL(out.blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = out.filename
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+async function onNewRootFolder() {
+  await lib.createFolder(null)
+}
+
+async function onFolderRename(id: string, newTitle: string) {
+  await lib.renameFolder(id, newTitle)
+}
+
+async function onFolderDelete(id: string) {
+  await lib.deleteFolder(id)
+}
+
+async function onFolderDownloadZip(id: string) {
+  await lib.exportFolderAsZip(id)
+}
+
+async function onNewDocInFolder(folderId: string) {
+  await lib.createEmptyDoc(folderId)
+  docLibraryPanelRef.value?.expandFolder?.(folderId)
+}
+
+async function onMoveDoc(docId: string, folderId: string | null) {
+  await lib.moveDocToFolder(docId, folderId)
+  if (folderId) docLibraryPanelRef.value?.expandFolder?.(folderId)
+}
+
 async function onImported(items: { title: string; content: string; titleLocked: boolean }[]) {
   if (!items.length) return
   let firstId: string | null = null
@@ -325,27 +429,52 @@ async function onDuplicate(id: string) {
 <template>
   <div
     class="editor-shell-with-sidebar"
+    :style="docShellInlineStyle"
     :data-reading="reading"
     :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'"
   >
-    <DocumentLibraryPanel
-      v-if="!sidebarCollapsed"
-      v-model:search-query="searchQuery"
-      :docs="filteredDocs"
-      :active-id="activeId"
-      :has-docs="hasDocs"
-      @select="onSelect"
-      @rename="onRename"
-      @unlock-title="onUnlock"
-      @delete="onDelete"
-      @duplicate="onDuplicate"
-      @download="downloadDocAsMd"
-      @new-doc="onNewDoc"
-      @imported="onImported"
-      @import-error="onImportError"
-    />
+    <div v-if="!sidebarCollapsed" class="doc-sidebar-host">
+      <DocumentLibraryPanel
+        ref="docLibraryPanelRef"
+        v-model:search-query="searchQuery"
+        :folders="folders"
+        :docs="displayPanelDocs"
+        :tree-mode="treeMode"
+        :has-library-items="hasLibraryItems"
+        :active-id="activeId"
+        :download-active-disabled="!activeId"
+        @select="onSelect"
+        @rename="onRename"
+        @unlock-title="onUnlock"
+        @delete="onDelete"
+        @duplicate="onDuplicate"
+        @download="downloadDocAsMd"
+        @download-active="downloadActiveDocAsMd"
+        @new-doc="onNewDoc"
+        @new-root-folder="onNewRootFolder"
+        @new-doc-in-folder="onNewDocInFolder"
+        @folder-rename="onFolderRename"
+        @folder-delete="onFolderDelete"
+        @folder-download-zip="onFolderDownloadZip"
+        @move-doc="onMoveDoc"
+        @imported="onImported"
+        @import-error="onImportError"
+      />
+      <div
+        class="doc-sidebar-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="拖动调整文档库宽度"
+        title="拖动调整文档库宽度"
+        :aria-valuenow="sidebarWidthPx"
+        aria-valuemin="200"
+        :aria-valuemax="sidebarAriaMax"
+        tabindex="0"
+        @pointerdown="onDocSidebarResizeDown"
+      />
+    </div>
 
-    <div class="editor-page">
+    <div class="editor-page" :class="readingPageClass">
       <div v-if="unavailableMessage" class="doc-library-banner" role="alert">
         {{ unavailableMessage }}
       </div>
@@ -359,25 +488,12 @@ async function onDuplicate(id: string) {
           class="toolbar-toggle"
           :aria-label="sidebarCollapsed ? '展开文档库侧栏' : '收起文档库侧栏'"
           :aria-expanded="!sidebarCollapsed"
-          title="切换文档库"
+          :title="sidebarCollapsed ? '展开左侧文档库（列表与导入）' : '收起左侧文档库，扩大编辑区域'"
           @click="sidebarCollapsed = !sidebarCollapsed"
         >≡</button>
         <h1 class="doc-title" :class="{ muted: !activeDoc }">
           {{ activeDoc?.title ?? '未选中文档' }}
         </h1>
-        <div v-if="layout !== 'code'" class="theme-group" role="group" aria-label="阅读模式">
-          <span class="theme-label">正文</span>
-          <button type="button" class="theme-btn" :class="{ active: reading === 'light' }"
-            :aria-pressed="reading === 'light'" @click="setReading('light')">浅色</button>
-          <button type="button" class="theme-btn" :class="{ active: reading === 'dark' }"
-            :aria-pressed="reading === 'dark'" @click="setReading('dark')">深色</button>
-        </div>
-        <div v-if="layout !== 'code'" class="theme-group" role="group" aria-label="图表主题">
-          <span class="theme-label">图表主题</span>
-          <button v-for="t in MERMAID_THEMES" :key="t.id" type="button" class="theme-btn"
-            :class="{ active: chartTheme === t.id }" :aria-pressed="chartTheme === t.id"
-            :title="t.label" @click="setChartTheme(t.id)">{{ t.id }}</button>
-        </div>
         <div v-if="layout === 'code'" class="theme-group" role="group" aria-label="编辑模式">
           <span class="theme-label">编辑模式</span>
           <button type="button" class="theme-btn" :class="{ active: editMode === 'raw' }"
@@ -393,18 +509,69 @@ async function onDuplicate(id: string) {
             </select>
           </label>
           <button type="button" class="ghost-btn" @click="exportHtml">下载 HTML</button>
+          <button type="button" class="ghost-btn" @click="onLoadSample">载入示例</button>
+        </div>
+        <div
+          class="theme-group theme-group--reading-end"
+          role="group"
+          aria-label="全站浅色 / 深色"
+        >
+          <button
+            type="button"
+            class="theme-btn theme-btn--reading-icon"
+            :class="{ active: reading === 'light' }"
+            title="浅色模式（全站）"
+            aria-label="切换到浅色模式"
+            :aria-pressed="reading === 'light'"
+            @click="setReading('light')"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" />
+              <line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="theme-btn theme-btn--reading-icon"
+            :class="{ active: reading === 'dark' }"
+            title="深色模式（全站）"
+            aria-label="切换到深色模式"
+            :aria-pressed="reading === 'dark'"
+            @click="setReading('dark')"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          </button>
         </div>
       </header>
-
-      <p class="hint">
-        <template v-if="layout !== 'code'">
-          阅读模式：<strong>{{ readingLabel }}</strong>；图表主题：<strong>{{ activeChartThemeLabel }}</strong>；
-        </template>
-        布局：<strong>{{ LAYOUT_OPTIONS.find((o) => o.value === layout)?.label }}</strong>
-        <template v-if="layout === 'code'">
-          ；编辑模式：<strong>{{ editModeLabel }}</strong>
-        </template>
-      </p>
 
       <main v-if="hasDocs" class="main" :class="`layout-${layout}`">
         <section v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
@@ -414,12 +581,14 @@ async function onDuplicate(id: string) {
               v-if="layout === 'split' || (layout === 'code' && editMode === 'raw')"
               v-model="activeContent"
               language="markdown"
+              :editor-theme="monacoEditorTheme"
             />
             <TuiEditor
               v-else-if="layout === 'code'"
               :key="activeId ?? 'no-doc'"
               v-model="activeContent"
-              :chart-theme="chartTheme"
+              :chart-theme="MARKDOWN_MERMAID_THEME"
+              :reading="reading"
             />
           </div>
         </section>
@@ -427,7 +596,7 @@ async function onDuplicate(id: string) {
           <h2 class="pane-title">预览</h2>
           <div v-if="topError" class="error-banner" role="alert">{{ topError }}</div>
           <div class="pane-body preview-scroll" @dblclick="onPreviewDblClick">
-            <div class="markdown-preview-wrap" :class="previewWrapClass">
+            <div class="markdown-preview-wrap">
               <div ref="previewHost" class="markdown-body" />
             </div>
           </div>
@@ -440,10 +609,10 @@ async function onDuplicate(id: string) {
 
       <section v-else class="doc-empty-state" aria-label="空文档库">
         <h2>还没有文档</h2>
-        <p>新建一篇空文档开始编写，或加载示例文章查看渲染效果。</p>
+        <p>新建一篇空文档开始编写，或载入示例文章查看渲染效果。</p>
         <div class="doc-empty-actions">
           <button type="button" class="primary-btn" @click="onNewDoc">新建空文档</button>
-          <button type="button" class="ghost-btn" @click="onLoadSample">加载示例</button>
+          <button type="button" class="ghost-btn" @click="onLoadSample">载入示例</button>
         </div>
       </section>
 
@@ -452,6 +621,7 @@ async function onDuplicate(id: string) {
         v-model="activeContent"
         language="markdown"
         title="Markdown 源码编辑"
+        :editor-theme="monacoEditorTheme"
       />
     </div>
   </div>
@@ -505,7 +675,7 @@ async function onDuplicate(id: string) {
   min-height: 2rem;
 }
 
-.reading-light {
+.editor-page.reading-light {
   --md-text: #1a1d24;
   --md-muted: #5c6578;
   --md-bg: #f9fafb;
@@ -517,7 +687,7 @@ async function onDuplicate(id: string) {
   color: var(--md-text);
 }
 
-.reading-dark {
+.editor-page.reading-dark {
   --md-text: #e5e7eb;
   --md-muted: #9ca3af;
   --md-bg: #1f2937;
@@ -527,6 +697,82 @@ async function onDuplicate(id: string) {
   --md-heading-line: 1.3;
   background: var(--md-bg);
   color: var(--md-text);
+}
+
+.editor-page.reading-dark :deep(.pane) {
+  background: #111827;
+  border-color: var(--md-border);
+  color: var(--md-text);
+}
+
+.editor-page.reading-dark :deep(.pane-title) {
+  background: #0f172a;
+  border-color: var(--md-border);
+  color: var(--md-muted);
+}
+
+.editor-page.reading-light :deep(.pane) {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.editor-page :deep(.toolbar .theme-group--reading-end) {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.4rem;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+@media (max-width: 719px) {
+  .editor-page :deep(.toolbar .theme-group--reading-end) {
+    flex-basis: 100%;
+  }
+}
+
+.editor-page :deep(.theme-btn.theme-btn--reading-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.2rem;
+  border-color: var(--md-border, var(--border));
+  background: transparent;
+  color: var(--md-text, var(--text));
+}
+
+.editor-page :deep(.theme-btn.theme-btn--reading-icon:hover:not(.active)) {
+  border-color: #1a1a1e;
+  color: #1a1a1e;
+}
+
+.editor-page :deep(.theme-btn.theme-btn--reading-icon.active) {
+  background: #1a1a1e;
+  border-color: #1a1a1e;
+  color: #fafafa;
+}
+
+.editor-page :deep(.theme-btn.theme-btn--reading-icon:focus-visible) {
+  outline: 2px solid #1a1a1e;
+  outline-offset: 2px;
+}
+
+/* 深色阅读：hover / 选中不用蓝紫，用中性对比 */
+.editor-page.reading-dark :deep(.theme-btn.theme-btn--reading-icon:hover:not(.active)) {
+  border-color: #d1d5db;
+  color: #f9fafb;
+}
+
+.editor-page.reading-dark :deep(.theme-btn.theme-btn--reading-icon.active) {
+  background: #f3f4f6;
+  border-color: #f3f4f6;
+  color: #111827;
+}
+
+.editor-page :deep(.theme-btn--reading-icon svg) {
+  display: block;
 }
 
 .markdown-body {
@@ -715,7 +961,7 @@ async function onDuplicate(id: string) {
   white-space: pre-wrap;
 }
 
-.reading-dark .markdown-body :deep(.mermaid-error) {
+.editor-page.reading-dark .markdown-body :deep(.mermaid-error) {
   color: #fca5a5;
 }
 
@@ -746,15 +992,41 @@ async function onDuplicate(id: string) {
 
 .editor-page :deep(.toolbar) {
   border: none;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--md-border, var(--border));
   border-radius: 0;
   padding: 0.6rem 1rem;
-  background: var(--surface);
+  background: transparent;
 }
 
 .editor-page :deep(.hint) {
   margin: 0.4rem 0 0;
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+/* 文档库右缘拖拽调宽 */
+.doc-sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+  background: transparent;
+}
+
+.doc-sidebar-resizer:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+[data-reading='dark'] .doc-sidebar-resizer:hover {
+  background: rgba(129, 140, 248, 0.14);
+}
+
+.doc-sidebar-resizer:focus-visible {
+  outline: 2px solid var(--doc-panel-active-bar, #4f46e5);
+  outline-offset: -2px;
 }
 </style>

@@ -1,5 +1,7 @@
 export type Doc = {
   id: string
+  /** 所在文件夹 id；缺省或 null 表示根目录 */
+  folderId?: string | null
   title: string
   titleLocked: boolean
   content: string
@@ -7,10 +9,30 @@ export type Doc = {
   updatedAt: number
 }
 
+export type FolderRecord = {
+  id: string
+  kind: 'folder'
+  title: string
+  /** 父文件夹 id；null 表示根目录下的一级文件夹 */
+  parentId: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export type StoredItem = Doc | FolderRecord
+
+export function isFolderRecord(item: StoredItem): item is FolderRecord {
+  return (item as FolderRecord).kind === 'folder'
+}
+
+export function isDocRecord(item: StoredItem): item is Doc {
+  return !isFolderRecord(item)
+}
+
 export type DocStore = {
-  getAll(): Promise<Doc[]>
-  get(id: string): Promise<Doc | undefined>
-  put(doc: Doc): Promise<void>
+  getAll(): Promise<StoredItem[]>
+  get(id: string): Promise<StoredItem | undefined>
+  put(item: StoredItem): Promise<void>
   delete(id: string): Promise<void>
   count(): Promise<number>
 }
@@ -60,18 +82,18 @@ export async function openDocStore(options?: OpenDocStoreOptions): Promise<DocSt
   }
 
   return {
-    async getAll(): Promise<Doc[]> {
+    async getAll(): Promise<StoredItem[]> {
       const store = tx('readonly')
-      const all = await promisifyRequest(store.getAll() as IDBRequest<Doc[]>)
+      const all = await promisifyRequest(store.getAll() as IDBRequest<StoredItem[]>)
       return all
     },
-    async get(id: string): Promise<Doc | undefined> {
+    async get(id: string): Promise<StoredItem | undefined> {
       const store = tx('readonly')
-      return await promisifyRequest(store.get(id) as IDBRequest<Doc | undefined>)
+      return await promisifyRequest(store.get(id) as IDBRequest<StoredItem | undefined>)
     },
-    async put(doc: Doc): Promise<void> {
+    async put(item: StoredItem): Promise<void> {
       const store = tx('readwrite')
-      await promisifyRequest(store.put(doc))
+      await promisifyRequest(store.put(item))
     },
     async delete(id: string): Promise<void> {
       const store = tx('readwrite')

@@ -7,8 +7,10 @@ const props = withDefaults(
     modelValue: string
     language?: string
     title?: string
+    /** Monaco 主题，与 SourceEditor 一致 */
+    editorTheme?: 'vs' | 'vs-dark'
   }>(),
-  { language: 'plaintext', title: '源码编辑' },
+  { language: 'plaintext', title: '源码编辑', editorTheme: 'vs' },
 )
 
 const emit = defineEmits<{
@@ -25,7 +27,7 @@ function createEditor() {
   editor = monaco.editor.create(host.value, {
     value: props.modelValue,
     language: props.language,
-    theme: 'vs',
+    theme: props.editorTheme,
     automaticLayout: true,
     minimap: { enabled: false },
     fontSize: 14,
@@ -102,6 +104,14 @@ watch(
   },
 )
 
+watch(
+  () => props.editorTheme,
+  (t) => {
+    if (!editor) return
+    monaco.editor.setTheme(t)
+  },
+)
+
 onBeforeUnmount(() => {
   disposeEditor()
   document.removeEventListener('keydown', onEsc)
@@ -116,7 +126,13 @@ defineExpose({ open, close, toggle })
       <div class="floating-dialog" role="dialog" aria-modal="true" :aria-label="title">
         <header class="floating-header">
           <h3 class="floating-title">{{ title }}</h3>
-          <button class="floating-close" type="button" aria-label="关闭" @click="close">✕</button>
+          <button
+            class="floating-close"
+            type="button"
+            title="关闭浮动编辑器（Esc）"
+            aria-label="关闭"
+            @click="close"
+          >✕</button>
         </header>
         <div ref="host" class="floating-editor-host" />
       </div>

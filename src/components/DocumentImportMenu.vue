@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { strFromU8, unzipSync } from 'fflate'
 import {
   buildMdFetchProxyUrl,
   defaultMdFetchBaseForEnv,
@@ -123,33 +124,68 @@ function readFileAsText(file: File): Promise<string> {
   })
 }
 
+function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as ArrayBuffer)
+    reader.onerror = () => reject(new Error(file.name + ' 读取失败'))
+    reader.readAsArrayBuffer(file)
+  })
+}
+
+function mdItemsFromZipBuffer(buf: ArrayBuffer): ImportedItem[] {
+  let files: Record<string, Uint8Array>
+  try {
+    files = unzipSync(new Uint8Array(buf))
+  } catch {
+    return []
+  }
+  const items: ImportedItem[] = []
+  for (const [path, data] of Object.entries(files)) {
+    if (path.endsWith('/')) continue
+    if (!/\.(md|markdown|txt)$/i.test(path)) continue
+    const name = path.replace(/^.*[/\\]/, '')
+    const stripped = name.replace(/\.(md|markdown|txt)$/i, '')
+    items.push({
+      title: stripped || name,
+      content: strFromU8(data, true),
+      titleLocked: true,
+    })
+  }
+  return items
+}
+
 async function onPickFile(ev: Event) {
   const input = ev.target as HTMLInputElement
   const files = Array.from(input.files ?? [])
   input.value = ''
   if (!files.length) return
 
-  const results = await Promise.allSettled(
-    files.map(async (file) => ({
-      file,
-      content: await readFileAsText(file),
-    })),
-  )
-
   const items: ImportedItem[] = []
   const errors: string[] = []
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i]
-    if (r.status === 'fulfilled') {
-      const { file, content } = r.value
+
+  for (const file of files) {
+    const lower = file.name.toLowerCase()
+    try {
+      if (lower.endsWith('.zip')) {
+        const buf = await readFileAsArrayBuffer(file)
+        const fromZip = mdItemsFromZipBuffer(buf)
+        if (!fromZip.length) {
+          errors.push(file.name)
+          continue
+        }
+        items.push(...fromZip)
+        continue
+      }
+      const content = await readFileAsText(file)
       const stripped = file.name.replace(/\.(md|markdown|txt)$/i, '')
       items.push({
         title: stripped || file.name,
         content,
         titleLocked: true,
       })
-    } else {
-      errors.push(files[i].name)
+    } catch {
+      errors.push(file.name)
     }
   }
 
@@ -157,9 +193,9 @@ async function onPickFile(ev: Event) {
   if (errors.length) {
     emit(
       'error',
-      `导入完成：成功 ${items.length}/${files.length}${
-        errors.length ? `，失败 ${errors.length} 个：${errors.join(', ')}` : ''
-      }`,
+      items.length
+        ? `部分文件未导入：${errors.join('、')}（已导入 ${items.length} 个文档）`
+        : `导入失败：${errors.join('、')}`,
     )
   }
 }
@@ -197,11 +233,26 @@ onBeforeUnmount(() => {
       aria-haspopup="menu"
       :aria-expanded="menuOpen"
       :aria-controls="menuId ?? 'doc-import-menu'"
-      title="导入 Markdown"
-      aria-label="导入 Markdown"
+      :title="disabled ? 'Import unavailable' : 'Import .md or .zip files'"
+      :aria-label="disabled ? 'Import Markdown (unavailable)' : 'Import Markdown or ZIP'"
       @click="toggleMenu"
     >
-      <slot>⬆</slot>
+      <svg
+        class="doc-import-trigger-icon"
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="17 8 12 3 7 8" />
+        <line x1="12" y1="3" x2="12" y2="15" />
+      </svg>
     </button>
     <ul
       v-show="menuOpen"
@@ -212,7 +263,7 @@ onBeforeUnmount(() => {
     >
       <li role="none">
         <button type="button" class="doc-import-menu-item" role="menuitem" @click="pickLocalMd">
-          从本地选择…（可多选）
+          从本地选择…（.md / .zip，可多选）
         </button>
       </li>
       <li role="none">
@@ -232,7 +283,7 @@ onBeforeUnmount(() => {
       ref="fileInputRef"
       type="file"
       class="doc-import-hidden-file"
-      accept=".md,.markdown,.txt,text/markdown,text/plain"
+      accept=".md,.markdown,.txt,.zip,application/zip,text/markdown,text/plain"
       multiple
       aria-hidden="true"
       tabindex="-1"
@@ -281,19 +332,29 @@ onBeforeUnmount(() => {
 }
 
 .doc-import-trigger {
+  box-sizing: border-box;
   font: inherit;
-  padding: 0.2rem 0.4rem;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--text, #111);
+  margin: 0;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--doc-toolbar-icon-border, rgb(213, 212, 226));
+  background: var(--doc-toolbar-icon-bg, rgba(0, 0, 0, 0.03));
+  color: var(--doc-toolbar-icon-color, rgb(85, 82, 122));
   cursor: pointer;
-  line-height: 1;
+  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc-import-trigger-icon {
+  flex-shrink: 0;
 }
 
 .doc-import-trigger:hover:not(:disabled) {
-  border-color: var(--border, #e5e7eb);
-  background: var(--bg, #f4f5f7);
+  filter: brightness(0.97);
 }
 
 .doc-import-trigger:disabled {

@@ -2,15 +2,11 @@
 import '@/styles/editor-shell.css'
 import mermaid from 'mermaid'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useAppReading } from '@/composables/useAppReading'
 import SourceEditor from '@/components/SourceEditor.vue'
 import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
-import {
-  MERMAID_THEMES,
-  loadStoredTheme,
-  mermaidInitForTheme,
-  persistTheme,
-  type MermaidThemeId,
-} from '@/themes'
+import AppModeNav from '@/components/AppModeNav.vue'
+import { mermaidInitForTheme } from '@/themes'
 
 type LayoutMode = 'split' | 'code' | 'preview'
 
@@ -69,10 +65,13 @@ const DEFAULT_SAMPLE = `flowchart TB
 
 const source = ref(DEFAULT_SAMPLE)
 const debouncedSource = ref(DEFAULT_SAMPLE)
-const theme = ref<MermaidThemeId>(loadStoredTheme() ?? 'default')
 const layout = ref<LayoutMode>(loadStoredLayout())
 const previewHost = ref<HTMLElement | null>(null)
 const floatingEditorRef = ref<InstanceType<typeof FloatingSourceEditor> | null>(null)
+
+const { reading, setReading } = useAppReading()
+
+const monacoEditorTheme = computed(() => (reading.value === 'dark' ? 'vs-dark' : 'vs'))
 
 function openFloatingEditor(lineNumber?: number) {
   floatingEditorRef.value?.open(lineNumber)
@@ -103,22 +102,17 @@ function debounceSourceUpdate() {
 
 watch(source, debounceSourceUpdate, { flush: 'post' })
 
-function setTheme(next: MermaidThemeId) {
-  theme.value = next
-  persistTheme(next)
-}
-
-const activeThemeLabel = computed(
-  () => MERMAID_THEMES.find((t) => t.id === theme.value)?.label ?? theme.value,
-)
-
 async function runRender() {
   const code = debouncedSource.value.trim()
   const host = previewHost.value
   if (!host) return
 
   const seq = ++renderSeq
-  mermaid.initialize(mermaidInitForTheme(theme.value))
+  mermaid.initialize(
+    mermaidInitForTheme('enterprise', {
+      enterprisePreview: reading.value === 'dark' ? 'dark' : 'light',
+    }),
+  )
 
   if (!code) {
     host.innerHTML = ''
@@ -153,7 +147,7 @@ async function runRender() {
   }
 }
 
-watch([debouncedSource, theme], runRender, { flush: 'post' })
+watch([debouncedSource, reading], runRender, { flush: 'post' })
 
 onMounted(() => {
   debouncedSource.value = source.value
@@ -208,24 +202,10 @@ function exportSvg() {
 </script>
 
 <template>
-  <div class="editor-page">
+  <div class="editor-page mermaid-editor-page">
     <header class="toolbar">
+      <AppModeNav class="mermaid-toolbar-mode-nav" />
       <h1 class="title">Mermaid 编辑与预览</h1>
-      <div class="theme-group" role="group" aria-label="预览主题">
-        <span class="theme-label">预览主题</span>
-        <button
-          v-for="t in MERMAID_THEMES"
-          :key="t.id"
-          type="button"
-          class="theme-btn"
-          :class="{ active: theme === t.id }"
-          :aria-pressed="theme === t.id"
-          :title="t.label"
-          @click="setTheme(t.id)"
-        >
-          {{ t.id }}
-        </button>
-      </div>
       <div class="toolbar-actions">
         <label class="field-inline">
           <span class="field-label">视图布局</span>
@@ -238,18 +218,69 @@ function exportSvg() {
         <button type="button" class="primary-btn" @click="exportSvg">导出 SVG</button>
         <button type="button" class="ghost-btn" @click="loadSample">载入示例</button>
       </div>
+      <div class="theme-group theme-group--reading-end" role="group" aria-label="全站浅色 / 深色">
+        <button
+          type="button"
+          class="theme-btn theme-btn--reading-icon"
+          :class="{ active: reading === 'light' }"
+          title="浅色模式（全站）"
+          aria-label="切换到浅色模式"
+          :aria-pressed="reading === 'light'"
+          @click="setReading('light')"
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="theme-btn theme-btn--reading-icon"
+          :class="{ active: reading === 'dark' }"
+          title="深色模式（全站，连线为灰色）"
+          aria-label="切换到深色模式"
+          :aria-pressed="reading === 'dark'"
+          @click="setReading('dark')"
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        </button>
+      </div>
     </header>
-
-    <p class="hint">
-      当前主题：<strong>{{ activeThemeLabel }}</strong>（已写入 localStorage）；布局：
-      <strong>{{ LAYOUT_OPTIONS.find((o) => o.value === layout)?.label }}</strong>
-    </p>
 
     <main class="main" :class="`layout-${layout}`">
       <section v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
         <h2 class="pane-title">源码</h2>
         <div class="pane-body">
-          <SourceEditor v-model="source" />
+          <SourceEditor v-model="source" :editor-theme="monacoEditorTheme" />
         </div>
       </section>
       <section v-show="layout !== 'code'" class="pane preview-pane" aria-label="预览">
@@ -266,6 +297,72 @@ function exportSvg() {
       ref="floatingEditorRef"
       v-model="source"
       title="Mermaid 源码编辑"
+      :editor-theme="monacoEditorTheme"
     />
   </div>
 </template>
+
+<style scoped>
+.mermaid-toolbar-mode-nav {
+  flex: 0 0 auto;
+  margin-right: 0.65rem;
+}
+
+.mermaid-editor-page :deep(.toolbar .theme-group--reading-end) {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.4rem;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+@media (max-width: 719px) {
+  .mermaid-editor-page :deep(.toolbar .theme-group--reading-end) {
+    flex-basis: 100%;
+  }
+}
+
+.mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.2rem;
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon:hover:not(.active)) {
+  border-color: #1a1a1e;
+  color: #1a1a1e;
+}
+
+.mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon.active) {
+  background: #1a1a1e;
+  border-color: #1a1a1e;
+  color: #fafafa;
+}
+
+.mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon:focus-visible) {
+  outline: 2px solid #1a1a1e;
+  outline-offset: 2px;
+}
+
+[data-reading='dark'] .mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon:hover:not(.active)) {
+  border-color: #d1d5db;
+  color: #f9fafb;
+}
+
+[data-reading='dark'] .mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon.active) {
+  background: #f3f4f6;
+  border-color: #f3f4f6;
+  color: #111827;
+}
+
+.mermaid-editor-page :deep(.theme-btn--reading-icon svg) {
+  display: block;
+}
+</style>
