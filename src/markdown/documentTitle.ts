@@ -9,7 +9,7 @@ function clipTitle(raw: string): string {
 }
 
 export function deriveTitle(content: string, fallbackOrdinal: number): string {
-  const m = content.match(/^\s*#\s+(.+?)\s*$/m)
+  const m = content.match(/^[ \t]{0,3}#[ \t]+(.+?)[ \t]*$/m)
   if (m) {
     const cleaned = clipTitle(m[1])
     if (cleaned) return cleaned
