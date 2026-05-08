@@ -1,6 +1,6 @@
 <!-- src/components/DocumentLibraryPanel.vue -->
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Doc } from '@/markdown/documentStore'
 import DocumentImportMenu from '@/components/DocumentImportMenu.vue'
 
@@ -25,7 +25,6 @@ const emit = defineEmits<{
   download: []
   imported: [items: ImportedItem[]]
   importError: [message: string]
-  loadSample: []
 }>()
 
 const renamingId = ref<string | null>(null)
@@ -37,6 +36,7 @@ function bindRenameInput(el: unknown) {
 }
 
 const ctxMenu = ref<{ id: string; x: number; y: number } | null>(null)
+const ctxMenuEl = ref<HTMLElement | null>(null)
 
 const downloadDisabled = computed(() => !props.activeId)
 const deleteDisabled = computed(() => !props.activeId)
@@ -79,6 +79,28 @@ function openContextMenu(ev: MouseEvent, doc: Doc) {
 function closeContextMenu() {
   ctxMenu.value = null
 }
+
+function onGlobalCtxPointerDown(ev: PointerEvent) {
+  if (!ctxMenu.value) return
+  if (ev.button !== 0 && ev.pointerType === 'mouse') return
+  const root = ctxMenuEl.value
+  const t = ev.target as Node
+  if (root && !root.contains(t)) closeContextMenu()
+}
+
+function onGlobalCtxKeydown(ev: KeyboardEvent) {
+  if (!ctxMenu.value) return
+  if (ev.key === 'Escape') closeContextMenu()
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', onGlobalCtxPointerDown, true)
+  document.addEventListener('keydown', onGlobalCtxKeydown)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onGlobalCtxPointerDown, true)
+  document.removeEventListener('keydown', onGlobalCtxKeydown)
+})
 
 function onCtxRename() {
   if (!ctxMenu.value) return
@@ -249,12 +271,15 @@ function onClearSearch() {
           <div class="doc-panel-item-meta">{{ formatTimestamp(doc.updatedAt) }}</div>
         </li>
       </ul>
-      <p v-else class="doc-panel-empty-list">未匹配到文档</p>
+      <p v-else class="doc-panel-empty-list">
+        {{ hasDocs ? '未匹配到文档' : '暂无文档，点击右上角 ＋ 新建' }}
+      </p>
     </div>
 
     <Teleport to="body">
       <ul
         v-if="ctxMenu"
+        ref="ctxMenuEl"
         class="doc-panel-ctx-menu"
         role="menu"
         :style="{ top: `${ctxMenu.y}px`, left: `${ctxMenu.x}px` }"
