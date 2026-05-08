@@ -55,7 +55,7 @@ export function deriveTitleFromUrl(url: string): string {
         try {
           decoded = decodeURIComponent(stripped)
         } catch {
-          /* fall back to hostname if percent-encoding is malformed */
+          /* malformed percent-encoding: leave decoded null so we fall back to hostname below */
         }
         return clipTitle(decoded ?? '') || u.hostname || 'URL 导入'
       }
