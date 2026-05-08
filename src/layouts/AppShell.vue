@@ -6,7 +6,7 @@ import { RouterLink, RouterView } from 'vue-router'
   <div class="app-shell">
     <nav class="app-nav" aria-label="站内导航">
       <RouterLink to="/markdown" class="nav-link" active-class="nav-link-active">Markdown</RouterLink>
-      <RouterLink to="/" class="nav-link" active-class="nav-link-active">Mermaid</RouterLink>
+      <RouterLink to="/mermaid" class="nav-link" active-class="nav-link-active">Mermaid</RouterLink>
     </nav>
     <RouterView />
   </div>
