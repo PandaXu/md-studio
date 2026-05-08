@@ -236,3 +236,39 @@
   max-width: 100%;
   height: auto;
 }
+
+/* === Document Library sidebar layout === */
+
+.editor-shell-with-sidebar {
+  display: grid;
+  grid-template-columns: var(--doc-sidebar-w, 240px) 1fr;
+  gap: 0.75rem;
+  align-items: stretch;
+  min-height: calc(100vh - 4rem);
+}
+
+.editor-shell-with-sidebar[data-sidebar-collapsed='true'] {
+  grid-template-columns: 1fr;
+}
+
+.editor-shell-with-sidebar > .editor-page {
+  min-width: 0;
+  padding: 0;
+}
+
+@media (max-width: 720px) {
+  .editor-shell-with-sidebar,
+  .editor-shell-with-sidebar[data-sidebar-collapsed='true'] {
+    grid-template-columns: 1fr;
+  }
+}
+
+.doc-library-banner {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: 8px;
+  color: var(--error-text);
+}

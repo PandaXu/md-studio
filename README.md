@@ -5,6 +5,7 @@
 ## 功能概览
 
 - **Markdown 页**
+  - 左侧 Documents 侧栏：基于 IndexedDB 的多文档库（新建 / 切换 / 重命名 / 删除 / 上传 / 下载 / 搜索 / 折叠 / 老数据自动迁移）
   - 视图布局：
     - 左右并列：固定 `Monaco` 源码编辑
     - 仅 Markdown 源码：支持编辑模式切换 `Raw (Monaco)` / `WYSIWYG (TUI Editor)`
@@ -17,7 +18,7 @@
     - 源码折叠编辑
     - 随输入实时更新
   - 预览支持 Base64 图片（含 `data:image/svg+xml;base64,...`）
-  - 导出 `.md` 与 `.html`（HTML 内联当前已渲染 SVG）
+  - 导出 .md（侧栏 ⬇ 图标）与 .html（工具栏「下载 HTML」）（HTML 内联当前已渲染 SVG）
   - 默认示例：`src/samples/harness-era-article.md`
 
 - **Mermaid 页**
