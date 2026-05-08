@@ -82,6 +82,7 @@ const lib = useDocumentLibrary()
 const {
   status,
   unavailableMessage,
+  activeDoc,
   activeId,
   activeContent,
   searchQuery,
@@ -100,7 +101,17 @@ const previewHost = ref<HTMLElement | null>(null)
 
 const topError = ref<string | null>(null)
 const importBanner = ref<string | null>(null)
+let importBannerTimer: ReturnType<typeof setTimeout> | null = null
 const floatingEditorRef = ref<InstanceType<typeof FloatingSourceEditor> | null>(null)
+
+function showImportBanner(message: string) {
+  importBanner.value = message
+  if (importBannerTimer) clearTimeout(importBannerTimer)
+  importBannerTimer = setTimeout(() => {
+    importBanner.value = null
+    importBannerTimer = null
+  }, 4000)
+}
 
 function openFloatingEditor(lineNumber?: number) {
   floatingEditorRef.value?.open(lineNumber)
@@ -190,6 +201,10 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   if (debounceTimer) clearTimeout(debounceTimer)
+  if (importBannerTimer) {
+    clearTimeout(importBannerTimer)
+    importBannerTimer = null
+  }
 })
 
 const EXPORT_CSS_LIGHT = `
@@ -280,8 +295,7 @@ async function onImported(items: { title: string; content: string; titleLocked: 
     if (!firstId) firstId = doc.id
   }
   if (firstId) await lib.setActive(firstId)
-  importBanner.value = `已导入 ${items.length} 篇文档`
-  setTimeout(() => { importBanner.value = null }, 4000)
+  showImportBanner(`已导入 ${items.length} 篇文档`)
 }
 
 function onImportError(message: string) {
@@ -304,8 +318,7 @@ async function onDelete(id: string) { await lib.deleteDoc(id) }
 async function onDuplicate(id: string) {
   const dup = await lib.duplicateDoc(id)
   if (!dup) return
-  importBanner.value = `已创建副本：${dup.title}`
-  setTimeout(() => { importBanner.value = null }, 4000)
+  showImportBanner(`已创建副本：${dup.title}`)
 }
 </script>
 
@@ -349,8 +362,8 @@ async function onDuplicate(id: string) {
           title="切换文档库"
           @click="sidebarCollapsed = !sidebarCollapsed"
         >≡</button>
-        <h1 class="doc-title" :class="{ muted: !lib.activeDoc.value }">
-          {{ lib.activeDoc.value?.title ?? '未选中文档' }}
+        <h1 class="doc-title" :class="{ muted: !activeDoc }">
+          {{ activeDoc?.title ?? '未选中文档' }}
         </h1>
         <div v-if="layout !== 'code'" class="theme-group" role="group" aria-label="阅读模式">
           <span class="theme-label">正文</span>
