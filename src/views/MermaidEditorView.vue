@@ -6,6 +6,8 @@ import { useAppReading } from '@/composables/useAppReading'
 import SourceEditor from '@/components/SourceEditor.vue'
 import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
 import AppModeNav from '@/components/AppModeNav.vue'
+import EditorHistoryButtons from '@/components/EditorHistoryButtons.vue'
+import { useTextEditHistory } from '@/composables/useTextEditHistory'
 import { mermaidInitForTheme } from '@/themes'
 
 type LayoutMode = 'split' | 'code' | 'preview'
@@ -65,6 +67,13 @@ const DEFAULT_SAMPLE = `flowchart TB
 
 const source = ref(DEFAULT_SAMPLE)
 const debouncedSource = ref(DEFAULT_SAMPLE)
+const {
+  canUndo,
+  canRedo,
+  undo: applyTextUndo,
+  redo: applyTextRedo,
+  reset: resetTextHistory,
+} = useTextEditHistory(source, { debounceMs: 320 })
 const layout = ref<LayoutMode>(loadStoredLayout())
 const previewHost = ref<HTMLElement | null>(null)
 const floatingEditorRef = ref<InstanceType<typeof FloatingSourceEditor> | null>(null)
@@ -154,9 +163,27 @@ onMounted(() => {
   void runRender()
 })
 
+function flushMermaidPreviewFromSource() {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
+  debouncedSource.value = source.value
+}
+
+function onHistoryUndo() {
+  applyTextUndo()
+  flushMermaidPreviewFromSource()
+}
+
+function onHistoryRedo() {
+  applyTextRedo()
+  flushMermaidPreviewFromSource()
+}
+
 function loadSample() {
-  source.value = DEFAULT_SAMPLE
-  debouncedSource.value = DEFAULT_SAMPLE
+  resetTextHistory(DEFAULT_SAMPLE)
+  flushMermaidPreviewFromSource()
 }
 
 watch(layout, (mode) => {
@@ -207,6 +234,12 @@ function exportSvg() {
       <AppModeNav class="mermaid-toolbar-mode-nav" />
       <h1 class="title">Mermaid 编辑与预览</h1>
       <div class="toolbar-actions">
+        <EditorHistoryButtons
+          :can-undo="canUndo"
+          :can-redo="canRedo"
+          @undo="onHistoryUndo"
+          @redo="onHistoryRedo"
+        />
         <label class="field-inline">
           <span class="field-label">视图布局</span>
           <select v-model="layout" class="select" aria-label="视图布局">

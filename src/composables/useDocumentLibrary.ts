@@ -39,7 +39,7 @@ export type LibraryHandle = {
   unlockTitle(id: string): Promise<void>
   deleteDoc(id: string): Promise<void>
   duplicateDoc(id: string): Promise<Doc | null>
-  createFolder(parentId: string | null): Promise<FolderRecord>
+  createFolder(parentId: string | null, preferredTitle?: string | null): Promise<FolderRecord>
   renameFolder(id: string, newTitle: string): Promise<void>
   deleteFolder(id: string): Promise<void>
   exportFolderAsZip(folderId: string): Promise<void>
@@ -345,12 +345,22 @@ export function useDocumentLibrary(): LibraryHandle {
     if (store) await store.put(updated)
   }
 
-  async function createFolder(parentId: string | null): Promise<FolderRecord> {
+  const FOLDER_TITLE_MAX = 80
+  function clipFolderTitle(raw: string): string {
+    const t = raw.replace(/\s+/g, ' ').trim()
+    if (t.length <= FOLDER_TITLE_MAX) return t
+    return `${t.slice(0, FOLDER_TITLE_MAX - 1)}…`
+  }
+
+  async function createFolder(parentId: string | null, preferredTitle?: string | null): Promise<FolderRecord> {
     const ts = Date.now()
+    const trimmed = preferredTitle?.replace(/\s+/g, ' ').trim() ?? ''
+    const title =
+      trimmed.length > 0 ? clipFolderTitle(trimmed) : nextFolderTitle(parentId, folders.value)
     const folder: FolderRecord = {
       id: newId(),
       kind: 'folder',
-      title: nextFolderTitle(parentId, folders.value),
+      title,
       parentId,
       createdAt: ts,
       updatedAt: ts,

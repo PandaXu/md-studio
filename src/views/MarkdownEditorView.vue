@@ -5,8 +5,11 @@ import SourceEditor from '@/components/SourceEditor.vue'
 import TuiEditor from '@/components/TuiEditor.vue'
 import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
 import DocumentLibraryPanel from '@/components/DocumentLibraryPanel.vue'
+import type { DocLibraryImportPayload } from '@/components/DocumentImportMenu.vue'
+import EditorHistoryButtons from '@/components/EditorHistoryButtons.vue'
 import { useAppReading } from '@/composables/useAppReading'
 import { useDocumentLibrary } from '@/composables/useDocumentLibrary'
+import { useTextEditHistory } from '@/composables/useTextEditHistory'
 import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
 import { sanitizeMarkdownHtml } from '@/markdown/sanitize'
@@ -148,6 +151,14 @@ const {
 
 const displayPanelDocs = computed(() => (treeMode.value ? docs.value : filteredDocs.value))
 
+const {
+  canUndo: canUndoEdit,
+  canRedo: canRedoEdit,
+  undo: applyMarkdownUndo,
+  redo: applyMarkdownRedo,
+  reset: resetMarkdownHistory,
+} = useTextEditHistory(activeContent, { debounceMs: 320 })
+
 const layout = ref<LayoutMode>(loadStoredLayout())
 const { reading, setReading } = useAppReading()
 const editMode = ref<EditMode>(loadStoredEditMode())
@@ -182,6 +193,24 @@ function onPreviewDblClick(ev: MouseEvent) {
   openFloatingEditor(line)
 }
 
+function flushMarkdownDebouncedSource() {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
+  debouncedSource.value = activeContent.value
+}
+
+function onMarkdownHistoryUndo() {
+  applyMarkdownUndo()
+  flushMarkdownDebouncedSource()
+}
+
+function onMarkdownHistoryRedo() {
+  applyMarkdownRedo()
+  flushMarkdownDebouncedSource()
+}
+
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let pipelineSeq = 0
 
@@ -195,6 +224,7 @@ function debounceSourceUpdate() {
 
 watch(activeContent, debounceSourceUpdate, { flush: 'post' })
 watch(activeId, () => {
+  resetMarkdownHistory(activeContent.value)
   debouncedSource.value = activeContent.value
   void nextTick(() => {
     const host = previewHost.value
@@ -362,8 +392,9 @@ async function downloadActiveDocAsMd() {
   URL.revokeObjectURL(url)
 }
 
-async function onNewRootFolder() {
-  await lib.createFolder(null)
+async function onNewRootFolder(title: string) {
+  const folder = await lib.createFolder(null, title)
+  docLibraryPanelRef.value?.expandFolder?.(folder.id)
 }
 
 async function onFolderRename(id: string, newTitle: string) {
@@ -388,18 +419,25 @@ async function onMoveDoc(docId: string, folderId: string | null) {
   if (folderId) docLibraryPanelRef.value?.expandFolder?.(folderId)
 }
 
-async function onImported(items: { title: string; content: string; titleLocked: boolean }[]) {
+async function onImported(payload: DocLibraryImportPayload) {
+  const { items, folderId } = payload
   if (!items.length) return
   let firstId: string | null = null
   for (const it of items) {
     const doc = await lib.createDocFromContent(it.content, {
       title: it.title,
       titleLocked: it.titleLocked,
+      folderId: folderId ?? undefined,
     })
     if (!firstId) firstId = doc.id
   }
   if (firstId) await lib.setActive(firstId)
-  showImportBanner(`已导入 ${items.length} 篇文档`)
+  if (folderId) docLibraryPanelRef.value?.expandFolder?.(folderId)
+  showImportBanner(
+    folderId
+      ? `已导入 ${items.length} 篇文档到当前文件夹`
+      : `已导入 ${items.length} 篇文档`,
+  )
 }
 
 function onImportError(message: string) {
@@ -502,6 +540,13 @@ async function onDuplicate(id: string) {
             :aria-pressed="editMode === 'wysiwyg'" @click="setEditMode('wysiwyg')">WYSIWYG</button>
         </div>
         <div class="toolbar-actions">
+          <EditorHistoryButtons
+            v-if="hasDocs"
+            :can-undo="canUndoEdit"
+            :can-redo="canRedoEdit"
+            @undo="onMarkdownHistoryUndo"
+            @redo="onMarkdownHistoryRedo"
+          />
           <label class="field-inline">
             <span class="field-label">视图布局</span>
             <select v-model="layout" class="select" aria-label="视图布局">

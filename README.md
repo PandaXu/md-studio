@@ -1,41 +1,52 @@
 # MD Studio
 
-一个基于 Vue 3 + Vite 的本地文档可视化工具，支持 **Markdown 文档编辑预览** 与 **Mermaid 图编辑渲染** 两种工作模式。顶栏导航可在 **Markdown**（`/markdown`）与 **Mermaid**（`/`）两页切换。
+基于 **Vue 3 + Vite** 的本地文档工作台：在浏览器中管理 Markdown 文档库、实时预览与导出，并提供独立的 **Mermaid** 编辑页。默认进入 **Markdown**（`/markdown`），侧栏可一键切到 **Mermaid**（`/mermaid`）。
+
+## 界面预览
+
+以下为 Markdown 编辑页在**深色**与**浅色**全站阅读主题下的界面（含文档库树、工具栏与预览区）。
+
+| 深色模式 | 浅色模式 |
+| :--: | :--: |
+| ![Markdown 页 — 深色主题](docs/readme/markdown-dark.png) | ![Markdown 页 — 浅色主题](docs/readme/markdown-light.png) |
 
 ## 功能概览
 
-- **Markdown 页**
-  - 左侧 Documents 侧栏：基于 IndexedDB 的多文档库（新建 / 切换 / 重命名 / 删除 / 上传 / 下载 / 搜索 / 折叠 / 老数据自动迁移）
-  - 视图布局：
-    - 左右并列：固定 `Monaco` 源码编辑
-    - 仅 Markdown 源码：支持编辑模式切换 `Raw (Monaco)` / `WYSIWYG (TUI Editor)`
-    - 仅预览：隐藏源码编辑与编辑模式选项
-  - GFM 表格/任务列表 + `DOMPurify` 消毒渲染
-  - 正文浅色/深色阅读模式（仅非“仅 Markdown 源码”布局显示）
-  - 文中 ` ```mermaid ` 代码块分块渲染，支持源码折叠/展开
-  - WYSIWYG 模式下 Mermaid 代码块支持：
-    - SVG 预览
-    - 源码折叠编辑
-    - 随输入实时更新
-  - 预览支持 Base64 图片（含 `data:image/svg+xml;base64,...`）
-  - 导出 .md（侧栏 ⬇ 图标）与 .html（工具栏「下载 HTML」）（HTML 内联当前已渲染 SVG）
-  - 默认示例：`src/samples/harness-era-article.md`
+### Markdown（`/markdown`）
 
-- **Mermaid 页**
-  - Monaco 编辑器 + 防抖渲染
-  - 主题切换：`default` / `dark` / `forest` / `enterprise`
-  - 视图布局：左右并列 / 仅代码 / 仅预览
-  - 导出 SVG
-  - 渲染错误时保留上一次成功结果
+- **文档库（IndexedDB）**
+  - 树形展示：根目录与**文件夹**嵌套、文档可拖入文件夹或移回根目录
+  - 文档：新建、切换、重命名、标题锁定/解锁、复制、删除、搜索、侧栏折叠与宽度拖拽
+  - 文件夹：新建（**弹窗输入名称**）、重命名、删除、导出 ZIP、右键/⋯ 菜单
+  - **导入**：工具栏上传（`.md` / `.txt` / `.zip`）；支持从文件夹菜单**上传到指定文件夹**；可选从 URL 拉取（需配置 `VITE_MD_FETCH_BASE`）
+  - 导出当前文档为 `.md`（侧栏下载图标）
+  - 老数据自动迁移（规格见设计文档）
 
-- **通用能力**
-  - 页面状态与主题配置持久化（`localStorage`）
-  - 双页共享统一工具栏与面板风格
+- **编辑与预览**
+  - 布局：**左右并列** / **仅 Markdown 源码** / **仅预览**
+  - 源码：**Monaco**（Raw）或 **Toast UI WYSIWYG**；WYSIWYG 与预览区 Mermaid 块随**全站浅色/深色**切换主题
+  - **编辑历史**：工具栏撤销 / 重做（停顿快照式，与 Monaco 逐字符撤销并存）
+  - GFM 表格、任务列表；`DOMPurify` 消毒后的 HTML 预览
+  - 文中 ` ```mermaid ` 分块渲染（企业风主题等）；预览内可展开编辑 Mermaid 源码
+  - 工具栏：**下载 HTML**、**载入示例**、全站阅读主题切换（日月图标）
+
+### Mermaid（`/mermaid`）
+
+- Monaco 编辑 + 防抖预览；**全站浅色/深色**与 Monaco 主题、Mermaid enterprise 变体同步
+- 布局：左右并列 / 仅代码 / 仅预览
+- 导出 SVG；解析失败时保留上一次成功图形并提示错误
+- 工具栏：编辑历史撤销/重做、载入示例等
+
+### 全站与通用
+
+- **阅读主题**：全站 `light` / `dark`（`localStorage` 键 `md-studio-reading`，兼容旧键迁移），影响 `data-reading`、侧栏、Markdown 预览、WYSIWYG、Mermaid 等
+- 路由：`/` 重定向至 `/markdown`；Markdown 与 Mermaid 共用壳层与侧栏导航风格
 
 ## 需求与规格
 
 - Mermaid：[docs/superpowers/specs/2026-05-06-mermaid-editor-design.md](docs/superpowers/specs/2026-05-06-mermaid-editor-design.md)
 - Markdown：[docs/superpowers/specs/2026-05-06-markdown-editor-design.md](docs/superpowers/specs/2026-05-06-markdown-editor-design.md)
+- 文档库面板：[docs/superpowers/specs/2026-05-08-document-library-panel-design.md](docs/superpowers/specs/2026-05-08-document-library-panel-design.md)
 
 ## 本地运行
 
@@ -53,13 +64,16 @@ npm run dev
 | 命令 | 说明 |
 |------|------|
 | `npm run dev` | 开发服务器 |
-| `npm run build` | 生产构建（非首版验收项，但可用于检查打包） |
+| `npm run build` | 生产构建 |
+| `npm run preview` | 本地预览构建产物 |
 | `npm run typecheck` | `vue-tsc` 类型检查 |
 
 ## 技术说明
 
-- **Monaco**：使用 **`vite-plugin-monaco-editor`**（见 `vite.config.ts`），`languageWorkers` 含 **`editorWorkerService`**；Markdown 页使用 `language="markdown"` 时构建会按需带上 Markdown 相关 worker chunk。插件在 `index.html` 中注入 `MonacoEnvironment.getWorkerUrl`。
-- **Mermaid**：`mermaid.initialize` 随主题更新；`parse` + `render`；Mermaid **单页**渲染失败时保留上一次成功 SVG，并在预览区上方显示错误信息。Markdown 预览中的 **分块** Mermaid 失败仅影响该块。
+- **Monaco**：`vite-plugin-monaco-editor`（见 `vite.config.ts`）；Markdown 使用 `language="markdown"` 时按需带上相关 worker。
+- **Toast UI Editor**：WYSIWYG 与 `default` / `dark` 主题切换；内嵌 Mermaid 与 `themes.ts` 中 enterprise 预览变体一致。
+- **Mermaid**：`mermaid.initialize` 随主题与阅读模式更新；单页与 Markdown 预览内块级渲染失败时的降级策略见代码注释。
+- **IndexedDB**：文档与文件夹持久化（`src/markdown/documentStore.ts`）；导入 ZIP 使用 `fflate`。
 
 ## 浏览器
 

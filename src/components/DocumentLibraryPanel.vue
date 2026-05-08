@@ -2,11 +2,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Doc, FolderRecord } from '@/markdown/documentStore'
-import DocumentImportMenu from '@/components/DocumentImportMenu.vue'
+import DocumentImportMenu, { type DocLibraryImportPayload } from '@/components/DocumentImportMenu.vue'
 import AppModeNav from '@/components/AppModeNav.vue'
 import FolderOutlineIcon from '@/components/icons/FolderOutlineIcon.vue'
-
-type ImportedItem = { title: string; content: string; titleLocked: boolean }
 
 type CtxTarget = { kind: 'doc'; id: string } | { kind: 'folder'; id: string }
 
@@ -39,15 +37,47 @@ const emit = defineEmits<{
   download: [id: string]
   downloadActive: []
   newDoc: []
-  newRootFolder: []
   newDocInFolder: [folderId: string]
   folderRename: [id: string, newTitle: string]
   folderDelete: [id: string]
   folderDownloadZip: [id: string]
   moveDoc: [docId: string, folderId: string | null]
-  imported: [items: ImportedItem[]]
+  imported: [payload: DocLibraryImportPayload]
   importError: [message: string]
+  newRootFolder: [title: string]
 }>()
+
+const importMenuRef = ref<InstanceType<typeof DocumentImportMenu> | null>(null)
+
+const newFolderDialogOpen = ref(false)
+const newFolderNameDraft = ref('')
+const newFolderErr = ref<string | null>(null)
+const newFolderInputRef = ref<HTMLInputElement | null>(null)
+
+function openNewFolderDialog() {
+  newFolderNameDraft.value = ''
+  newFolderErr.value = null
+  newFolderDialogOpen.value = true
+  void nextTick(() => {
+    newFolderInputRef.value?.focus()
+  })
+}
+
+function cancelNewFolderDialog() {
+  newFolderDialogOpen.value = false
+  newFolderErr.value = null
+}
+
+function confirmNewFolderDialog() {
+  const t = newFolderNameDraft.value.replace(/\s+/g, ' ').trim()
+  if (!t) {
+    newFolderErr.value = '请输入文件夹名称'
+    return
+  }
+  newFolderDialogOpen.value = false
+  newFolderErr.value = null
+  emit('newRootFolder', t)
+}
 
 const FOLDER_EXPANDED_KEY = 'markdown-editor-library-folder-expanded'
 
@@ -349,6 +379,13 @@ function onCtxNewDocInFolder() {
   emit('newDocInFolder', id)
 }
 
+function onCtxFolderImportMd() {
+  if (!ctxMenu.value || ctxMenu.value.target.kind !== 'folder') return
+  const id = ctxMenu.value.target.id
+  closeContextMenu()
+  importMenuRef.value?.openLocalPickerForFolder(id)
+}
+
 function onCtxFolderDownloadZip() {
   if (!ctxMenu.value || ctxMenu.value.target.kind !== 'folder') return
   const id = ctxMenu.value.target.id
@@ -517,8 +554,9 @@ defineExpose({ expandFolder })
       <div class="doc-panel-toolbar-icons">
         <AppModeNav class="doc-panel-toolbar-mode" />
         <DocumentImportMenu
+          ref="importMenuRef"
           menu-id="doc-library-import"
-          @imported="(items) => emit('imported', items)"
+          @imported="(p) => emit('imported', p)"
           @error="(msg) => emit('importError', msg)"
         />
         <button
@@ -557,9 +595,9 @@ defineExpose({ expandFolder })
         <button
           type="button"
           class="doc-toolbar-icon-btn"
-          title="New Folder"
+          title="新建文件夹"
           aria-label="新建文件夹"
-          @click="emit('newRootFolder')"
+          @click="openNewFolderDialog"
         >
           <FolderOutlineIcon class="doc-toolbar-icon-inner" :size="14" />
         </button>
@@ -658,7 +696,7 @@ defineExpose({ expandFolder })
               class="doc-panel-kebab doc-panel-kebab--folder"
               :data-kebab-kind="'folder'"
               :data-kebab-id="row.folder.id"
-              :title="`${row.folder.title}：更多操作（新建、下载 ZIP、重命名、删除）`"
+              :title="`${row.folder.title}：更多操作（新建、上传、下载 ZIP、重命名、删除）`"
               :aria-label="`${row.folder.title} 操作菜单`"
               aria-haspopup="menu"
               :aria-expanded="ctxMenuOpenForFolder(row.folder.id, 'kebab')"
@@ -674,6 +712,11 @@ defineExpose({ expandFolder })
               <li role="none">
                 <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxNewDocInFolder">
                   <span class="doc-panel-ctx-ico" aria-hidden="true">📄</span>新建文档
+                </button>
+              </li>
+              <li role="none">
+                <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderImportMd">
+                  <span class="doc-panel-ctx-ico" aria-hidden="true">⬆</span>上传 Markdown…
                 </button>
               </li>
               <li role="none">
@@ -931,6 +974,11 @@ defineExpose({ expandFolder })
             </button>
           </li>
           <li role="none">
+            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderImportMd">
+              <span class="doc-panel-ctx-ico" aria-hidden="true">⬆</span>上传 Markdown…
+            </button>
+          </li>
+          <li role="none">
             <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderDownloadZip">
               <span class="doc-panel-ctx-ico" aria-hidden="true">⬇</span>下载为 ZIP
             </button>
@@ -947,6 +995,43 @@ defineExpose({ expandFolder })
           </li>
         </template>
       </ul>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="newFolderDialogOpen"
+        class="doc-new-folder-overlay"
+        role="presentation"
+        @click.self="cancelNewFolderDialog"
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="doc-new-folder-title"
+          class="doc-new-folder-dialog"
+          @click.stop
+        >
+          <h3 id="doc-new-folder-title" class="doc-new-folder-title">新建文件夹</h3>
+          <label class="doc-new-folder-label">
+            <span class="doc-new-folder-label-text">文件夹名称</span>
+            <input
+              ref="newFolderInputRef"
+              v-model="newFolderNameDraft"
+              type="text"
+              class="doc-new-folder-input"
+              maxlength="80"
+              autocomplete="off"
+              aria-required="true"
+              @keydown.enter.prevent="confirmNewFolderDialog"
+            />
+          </label>
+          <p v-if="newFolderErr" class="doc-new-folder-err" role="alert">{{ newFolderErr }}</p>
+          <div class="doc-new-folder-actions">
+            <button type="button" class="ghost-btn" @click="cancelNewFolderDialog">取消</button>
+            <button type="button" class="primary-btn" @click="confirmNewFolderDialog">创建</button>
+          </div>
+        </div>
+      </div>
     </Teleport>
   </aside>
 </template>
@@ -1403,5 +1488,63 @@ defineExpose({ expandFolder })
 
 [data-reading='dark'] .doc-panel-ctx-item.danger {
   color: #f87171;
+}
+
+.doc-new-folder-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 28, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 110;
+}
+
+.doc-new-folder-dialog {
+  width: min(400px, calc(100vw - 2rem));
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  background: var(--doc-panel-surface, #fff);
+  border: 1px solid var(--doc-panel-border, #e5e7eb);
+  color: var(--doc-panel-text, #1f2937);
+}
+
+.doc-new-folder-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.doc-new-folder-label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.doc-new-folder-label-text {
+  color: var(--doc-panel-muted, #6b7280);
+}
+
+.doc-new-folder-input {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--doc-panel-border, #e5e7eb);
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--doc-panel-bg, #fafbfc);
+  color: var(--doc-panel-text, #1f2937);
+}
+
+.doc-new-folder-err {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: #b45309;
+}
+
+.doc-new-folder-actions {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 </style>

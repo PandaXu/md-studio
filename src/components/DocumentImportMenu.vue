@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { strFromU8, unzipSync } from 'fflate'
 import {
   buildMdFetchProxyUrl,
@@ -8,7 +8,13 @@ import {
 } from '@/constants/mdFetchApi'
 import { deriveTitleFromUrl } from '@/markdown/documentTitle'
 
-type ImportedItem = { title: string; content: string; titleLocked: boolean }
+export type ImportedItem = { title: string; content: string; titleLocked: boolean }
+
+export type DocLibraryImportPayload = {
+  items: ImportedItem[]
+  /** 非 null 时表示导入到该文件夹下 */
+  folderId: string | null
+}
 
 const props = defineProps<{
   disabled?: boolean
@@ -16,7 +22,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  imported: [items: ImportedItem[]]
+  imported: [payload: DocLibraryImportPayload]
   error: [message: string]
 }>()
 
@@ -26,6 +32,17 @@ const urlDraft = ref('')
 const urlErr = ref<string | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const wrapRef = ref<HTMLElement | null>(null)
+const triggerRef = ref<HTMLButtonElement | null>(null)
+const menuTeleportRef = ref<HTMLElement | null>(null)
+
+/** 下一次文件 / URL 导入的目标文件夹；工具栏导入为 null */
+const pendingFolderForImport = ref<string | null>(null)
+
+const menuFixedStyle = ref<Record<string, string>>({
+  top: '0px',
+  left: '0px',
+  minWidth: '12rem',
+})
 
 const mdFetchBase = computed(() =>
   defaultMdFetchBaseForEnv(import.meta.env.DEV, import.meta.env.VITE_MD_FETCH_BASE),
@@ -35,26 +52,77 @@ const urlMenuTitle = computed(() =>
   urlEnabled.value ? '' : '生产环境需在 .env 中配置 VITE_MD_FETCH_BASE 后才可从 URL 载入',
 )
 
+function updateMenuPosition() {
+  const el = triggerRef.value
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  const minW = Math.max(r.width, 192)
+  menuFixedStyle.value = {
+    position: 'fixed',
+    top: `${Math.round(r.bottom + 4)}px`,
+    left: `${Math.round(r.left)}px`,
+    minWidth: `${Math.round(minW)}px`,
+    zIndex: '90',
+  }
+}
+
+function bindMenuPositionListeners() {
+  window.addEventListener('scroll', updateMenuPosition, true)
+  window.addEventListener('resize', updateMenuPosition)
+}
+
+function unbindMenuPositionListeners() {
+  window.removeEventListener('scroll', updateMenuPosition, true)
+  window.removeEventListener('resize', updateMenuPosition)
+}
+
 function openMenu() {
   if (props.disabled) return
   menuOpen.value = true
+  void nextTick(() => {
+    updateMenuPosition()
+    bindMenuPositionListeners()
+  })
 }
+
 function closeMenu() {
+  if (!menuOpen.value) return
   menuOpen.value = false
+  unbindMenuPositionListeners()
 }
+
 function toggleMenu() {
   if (menuOpen.value) closeMenu()
   else openMenu()
 }
 
-defineExpose({ openMenu, closeMenu })
+defineExpose({ openMenu, closeMenu, openLocalPickerForFolder })
+
+function emitImported(items: ImportedItem[]) {
+  if (!items.length) return
+  emit('imported', { items, folderId: pendingFolderForImport.value })
+  pendingFolderForImport.value = null
+}
 
 function pickLocalMd() {
+  pendingFolderForImport.value = null
   closeMenu()
-  fileInputRef.value?.click()
+  queueMicrotask(() => {
+    fileInputRef.value?.click()
+  })
+}
+
+/** 从文件夹菜单等入口：打开本地文件选择，导入到指定文件夹 */
+function openLocalPickerForFolder(folderId: string) {
+  pendingFolderForImport.value = folderId
+  closeMenu()
+  queueMicrotask(() => {
+    fileInputRef.value?.click()
+  })
 }
 
 function openUrlDialog() {
+  pendingFolderForImport.value = null
   closeMenu()
   if (!urlEnabled.value) return
   urlErr.value = null
@@ -106,9 +174,7 @@ async function confirmUrl() {
   }
   try {
     const text = await fetchMarkdownFromProxy(u.href)
-    emit('imported', [
-      { title: deriveTitleFromUrl(u.href), content: text, titleLocked: true },
-    ])
+    emitImported([{ title: deriveTitleFromUrl(u.href), content: text, titleLocked: true }])
     closeUrlDialog()
   } catch (e) {
     urlErr.value = e instanceof Error ? e.message : String(e)
@@ -159,7 +225,10 @@ async function onPickFile(ev: Event) {
   const input = ev.target as HTMLInputElement
   const files = Array.from(input.files ?? [])
   input.value = ''
-  if (!files.length) return
+  if (!files.length) {
+    pendingFolderForImport.value = null
+    return
+  }
 
   const items: ImportedItem[] = []
   const errors: string[] = []
@@ -189,7 +258,9 @@ async function onPickFile(ev: Event) {
     }
   }
 
-  if (items.length) emit('imported', items)
+  if (items.length) emitImported(items)
+  else pendingFolderForImport.value = null
+
   if (errors.length) {
     emit(
       'error',
@@ -202,9 +273,13 @@ async function onPickFile(ev: Event) {
 
 function onGlobalPointerDown(ev: PointerEvent) {
   if (!menuOpen.value) return
-  const root = wrapRef.value
-  const t = ev.target as Node
-  if (root && !root.contains(t)) closeMenu()
+  const t = ev.target as Node | null
+  if (!t) return
+  const wrap = wrapRef.value
+  const menu = menuTeleportRef.value
+  if (wrap?.contains(t)) return
+  if (menu?.contains(t)) return
+  closeMenu()
 }
 
 function onGlobalKeydown(ev: KeyboardEvent) {
@@ -220,12 +295,14 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onGlobalPointerDown, true)
   document.removeEventListener('keydown', onGlobalKeydown)
+  unbindMenuPositionListeners()
 })
 </script>
 
 <template>
   <div ref="wrapRef" class="doc-import-wrap">
     <button
+      ref="triggerRef"
       type="button"
       class="doc-import-trigger"
       :disabled="disabled"
@@ -254,31 +331,35 @@ onBeforeUnmount(() => {
         <line x1="12" y1="3" x2="12" y2="15" />
       </svg>
     </button>
-    <ul
-      v-show="menuOpen"
-      :id="menuId ?? 'doc-import-menu'"
-      class="doc-import-menu"
-      role="menu"
-      aria-label="导入 Markdown"
-    >
-      <li role="none">
-        <button type="button" class="doc-import-menu-item" role="menuitem" @click="pickLocalMd">
-          从本地选择…（.md / .zip，可多选）
-        </button>
-      </li>
-      <li role="none">
-        <button
-          type="button"
-          class="doc-import-menu-item"
-          role="menuitem"
-          :disabled="!urlEnabled"
-          :title="urlMenuTitle"
-          @click="openUrlDialog"
-        >
-          从 URL 载入…
-        </button>
-      </li>
-    </ul>
+    <Teleport to="body">
+      <ul
+        v-show="menuOpen"
+        :id="menuId ?? 'doc-import-menu'"
+        ref="menuTeleportRef"
+        class="doc-import-menu doc-import-menu--floating"
+        role="menu"
+        :style="menuFixedStyle"
+        aria-label="导入 Markdown"
+      >
+        <li role="none">
+          <button type="button" class="doc-import-menu-item" role="menuitem" @click="pickLocalMd">
+            从本地选择…（.md / .zip，可多选）
+          </button>
+        </li>
+        <li role="none">
+          <button
+            type="button"
+            class="doc-import-menu-item"
+            role="menuitem"
+            :disabled="!urlEnabled"
+            :title="urlMenuTitle"
+            @click="openUrlDialog"
+          >
+            从 URL 载入…
+          </button>
+        </li>
+      </ul>
+    </Teleport>
     <input
       ref="fileInputRef"
       type="file"
@@ -363,18 +444,17 @@ onBeforeUnmount(() => {
 }
 
 .doc-import-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
   margin: 0;
   padding: 0.25rem 0;
   list-style: none;
-  min-width: 12rem;
   background: var(--surface, #fff);
   border: 1px solid var(--border, #e5e7eb);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  z-index: 30;
+}
+
+.doc-import-menu--floating {
+  position: fixed;
 }
 
 .doc-import-menu-item {
@@ -416,7 +496,7 @@ onBeforeUnmount(() => {
   background: rgba(15, 18, 28, 0.45);
   display: grid;
   place-items: center;
-  z-index: 50;
+  z-index: 100;
 }
 
 .doc-import-dialog {
