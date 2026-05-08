@@ -31,7 +31,9 @@ export type LibraryHandle = {
   renameDoc(id: string, newTitle: string): Promise<void>
   unlockTitle(id: string): Promise<void>
   deleteDoc(id: string): Promise<void>
+  duplicateDoc(id: string): Promise<Doc | null>
   flush(): Promise<void>
+  exportDocAsMarkdown(id: string): { filename: string; blob: Blob } | null
   exportActiveAsMarkdown(): { filename: string; blob: Blob } | null
 }
 
@@ -256,11 +258,34 @@ export function useDocumentLibrary(): LibraryHandle {
     }
   }
 
-  function exportActiveAsMarkdown(): { filename: string; blob: Blob } | null {
-    const doc = activeDoc.value
+  async function duplicateDoc(id: string): Promise<Doc | null> {
+    if (id === activeId.value) await flush()
+    const original = docs.value.find((d) => d.id === id)
+    if (!original) return null
+    const ts = Date.now()
+    const dup: Doc = {
+      id: newId(),
+      title: `${original.title} 副本`,
+      titleLocked: original.titleLocked,
+      content: original.content,
+      createdAt: ts,
+      updatedAt: ts,
+    }
+    docs.value = [dup, ...docs.value]
+    if (store) await store.put(dup)
+    return dup
+  }
+
+  function exportDocAsMarkdown(id: string): { filename: string; blob: Blob } | null {
+    const doc = docs.value.find((d) => d.id === id)
     if (!doc) return null
     const blob = new Blob([doc.content], { type: 'text/markdown;charset=utf-8' })
     return { filename: safeFilenameFromTitle(doc.title), blob }
+  }
+
+  function exportActiveAsMarkdown(): { filename: string; blob: Blob } | null {
+    if (!activeId.value) return null
+    return exportDocAsMarkdown(activeId.value)
   }
 
   watch(activeContent, () => {
@@ -327,7 +352,9 @@ export function useDocumentLibrary(): LibraryHandle {
     renameDoc,
     unlockTitle,
     deleteDoc,
+    duplicateDoc,
     flush,
+    exportDocAsMarkdown,
     exportActiveAsMarkdown,
   }
 }
