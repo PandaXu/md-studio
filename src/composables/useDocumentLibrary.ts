@@ -84,7 +84,14 @@ export function useDocumentLibrary(): LibraryHandle {
   const filteredDocs = computed<Doc[]>(() => {
     const q = searchQuery.value.trim().toLowerCase()
     if (!q) return sortedDocs.value
-    return sortedDocs.value.filter((d) => d.title.toLowerCase().includes(q))
+    const matched = sortedDocs.value.filter((d) => d.title.toLowerCase().includes(q))
+    if (activeId.value) {
+      const active = sortedDocs.value.find((d) => d.id === activeId.value)
+      if (active && !matched.some((d) => d.id === active.id)) {
+        return [active, ...matched]
+      }
+    }
+    return matched
   })
 
   const hasDocs = computed(() => docs.value.length > 0)
@@ -111,7 +118,6 @@ export function useDocumentLibrary(): LibraryHandle {
 
   async function doFlush(targetId: string | null) {
     try {
-      if (!store) return
       if (!targetId) return
       const idx = docs.value.findIndex((d) => d.id === targetId)
       if (idx === -1) return

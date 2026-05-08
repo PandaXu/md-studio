@@ -80,6 +80,7 @@ function persistSidebarCollapsed(v: boolean) {
 
 const lib = useDocumentLibrary()
 const {
+  status,
   unavailableMessage,
   activeId,
   activeContent,
@@ -249,7 +250,8 @@ function exportHtml() {
   URL.revokeObjectURL(url)
 }
 
-function downloadActiveMd() {
+async function downloadActiveMd() {
+  await lib.flush()
   const out = lib.exportActiveAsMarkdown()
   if (!out) return
   const url = URL.createObjectURL(out.blob)
@@ -395,6 +397,10 @@ async function onDelete(id: string) { await lib.deleteDoc(id) }
           </div>
         </section>
       </main>
+
+      <section v-else-if="status === 'loading'" class="doc-empty-state" aria-label="加载中">
+        <p>加载文档库…</p>
+      </section>
 
       <section v-else class="doc-empty-state" aria-label="空文档库">
         <h2>还没有文档</h2>
