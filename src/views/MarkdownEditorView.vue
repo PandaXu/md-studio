@@ -1,29 +1,25 @@
 <script setup lang="ts">
 import '@/styles/editor-shell.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import {
-  buildMdFetchProxyUrl,
-  defaultMdFetchBaseForEnv,
-  isUrlFetchEnabled,
-} from '@/constants/mdFetchApi'
 import SourceEditor from '@/components/SourceEditor.vue'
 import TuiEditor from '@/components/TuiEditor.vue'
 import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
+import DocumentLibraryPanel from '@/components/DocumentLibraryPanel.vue'
+import { useDocumentLibrary } from '@/composables/useDocumentLibrary'
 import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
 import { sanitizeMarkdownHtml } from '@/markdown/sanitize'
 import { MERMAID_THEMES, type MermaidThemeId } from '@/themes'
-import defaultSample from '@/samples/harness-era-article.md?raw'
 
 type LayoutMode = 'split' | 'code' | 'preview'
 type ReadingMode = 'light' | 'dark'
 type EditMode = 'raw' | 'wysiwyg'
 
-const SOURCE_KEY = 'markdown-editor-source'
 const LAYOUT_KEY = 'markdown-editor-layout'
 const READING_KEY = 'markdown-editor-reading'
 const CHART_THEME_KEY = 'markdown-editor-mermaid-theme'
 const EDIT_MODE_KEY = 'markdown-editor-edit-mode'
+const SIDEBAR_COLLAPSED_KEY = 'markdown-editor-library-collapsed'
 
 const LAYOUT_OPTIONS: { value: LayoutMode; label: string }[] = [
   { value: 'split', label: '左右并列' },
@@ -31,112 +27,78 @@ const LAYOUT_OPTIONS: { value: LayoutMode; label: string }[] = [
   { value: 'preview', label: '仅预览' },
 ]
 
-const DEFAULT_SAMPLE = defaultSample
-
-function loadStoredSource(): string | null {
-  try {
-    const v = localStorage.getItem(SOURCE_KEY)
-    return v != null ? v : null
-  } catch {
-    return null
-  }
-}
-
-function persistSource(s: string) {
-  try {
-    localStorage.setItem(SOURCE_KEY, s)
-  } catch {
-    /* ignore */
-  }
-}
-
 function loadStoredLayout(): LayoutMode {
   try {
     const v = localStorage.getItem(LAYOUT_KEY)
     if (v === 'split' || v === 'code' || v === 'preview') return v
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return 'split'
 }
-
 function persistLayout(mode: LayoutMode) {
-  try {
-    localStorage.setItem(LAYOUT_KEY, mode)
-  } catch {
-    /* ignore */
-  }
+  try { localStorage.setItem(LAYOUT_KEY, mode) } catch {}
 }
 
 function loadStoredReading(): ReadingMode {
   try {
     const v = localStorage.getItem(READING_KEY)
     if (v === 'light' || v === 'dark') return v
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return 'light'
 }
-
 function persistReading(mode: ReadingMode) {
-  try {
-    localStorage.setItem(READING_KEY, mode)
-  } catch {
-    /* ignore */
-  }
+  try { localStorage.setItem(READING_KEY, mode) } catch {}
 }
 
 function loadStoredChartTheme(): MermaidThemeId {
   try {
     const v = localStorage.getItem(CHART_THEME_KEY)
     if (v === 'default' || v === 'dark' || v === 'forest' || v === 'enterprise') return v
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return 'default'
 }
-
 function persistChartTheme(id: MermaidThemeId) {
-  try {
-    localStorage.setItem(CHART_THEME_KEY, id)
-  } catch {
-    /* ignore */
-  }
+  try { localStorage.setItem(CHART_THEME_KEY, id) } catch {}
 }
 
 function loadStoredEditMode(): EditMode {
   try {
     const v = localStorage.getItem(EDIT_MODE_KEY)
     if (v === 'raw' || v === 'wysiwyg') return v
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return 'raw'
 }
-
 function persistEditMode(mode: EditMode) {
-  try {
-    localStorage.setItem(EDIT_MODE_KEY, mode)
-  } catch {
-    /* ignore */
-  }
+  try { localStorage.setItem(EDIT_MODE_KEY, mode) } catch {}
 }
 
-const source = ref(loadStoredSource() ?? DEFAULT_SAMPLE)
-const debouncedSource = ref(source.value)
+function loadStoredSidebarCollapsed(): boolean {
+  try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1' } catch { return false }
+}
+function persistSidebarCollapsed(v: boolean) {
+  try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, v ? '1' : '0') } catch {}
+}
+
+const lib = useDocumentLibrary()
+const {
+  unavailableMessage,
+  activeId,
+  activeContent,
+  searchQuery,
+  filteredDocs,
+  hasDocs,
+} = lib
+
 const layout = ref<LayoutMode>(loadStoredLayout())
 const reading = ref<ReadingMode>(loadStoredReading())
 const chartTheme = ref<MermaidThemeId>(loadStoredChartTheme())
 const editMode = ref<EditMode>(loadStoredEditMode())
+const sidebarCollapsed = ref<boolean>(loadStoredSidebarCollapsed())
+
+const debouncedSource = ref<string>(activeContent.value)
 const previewHost = ref<HTMLElement | null>(null)
 
 const topError = ref<string | null>(null)
-
-const loadMenuOpen = ref(false)
-const loadUrlOpen = ref(false)
-const loadUrlDraft = ref('')
-const loadErr = ref<string | null>(null)
-const fileInputRef = ref<HTMLInputElement | null>(null)
+const importBanner = ref<string | null>(null)
 const floatingEditorRef = ref<InstanceType<typeof FloatingSourceEditor> | null>(null)
 
 function openFloatingEditor(lineNumber?: number) {
@@ -149,123 +111,6 @@ function onPreviewDblClick(ev: MouseEvent) {
   openFloatingEditor(line)
 }
 
-const mdFetchBase = computed(() =>
-  defaultMdFetchBaseForEnv(import.meta.env.DEV, import.meta.env.VITE_MD_FETCH_BASE),
-)
-const urlLoadEnabled = computed(() => isUrlFetchEnabled(mdFetchBase.value, import.meta.env.DEV))
-const urlMenuTitle = computed(() =>
-  urlLoadEnabled.value ? '' : '生产环境需在 .env 中配置 VITE_MD_FETCH_BASE 后才可从 URL 载入',
-)
-
-function toggleLoadMenu() {
-  loadMenuOpen.value = !loadMenuOpen.value
-}
-
-function closeLoadMenu() {
-  loadMenuOpen.value = false
-}
-
-function pickLocalMd() {
-  closeLoadMenu()
-  loadErr.value = null
-  fileInputRef.value?.click()
-}
-
-function openLoadUrlDialog() {
-  closeLoadMenu()
-  if (!urlLoadEnabled.value) return
-  loadErr.value = null
-  loadUrlDraft.value = ''
-  loadUrlOpen.value = true
-}
-
-function closeLoadUrlDialog() {
-  loadUrlOpen.value = false
-  loadErr.value = null
-}
-
-function applyLoadedMarkdown(text: string) {
-  source.value = text
-  debouncedSource.value = text
-}
-
-function validateHttpUrl(raw: string): URL | null {
-  const t = raw.trim()
-  try {
-    const u = new URL(t)
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-    return u
-  } catch {
-    return null
-  }
-}
-
-async function fetchMarkdownFromProxy(target: string): Promise<string> {
-  const reqUrl = buildMdFetchProxyUrl(mdFetchBase.value, target)
-  const res = await fetch(reqUrl, { method: 'GET', mode: 'cors', credentials: 'omit' })
-  const ct = res.headers.get('content-type') ?? ''
-  if (!res.ok) {
-    let msg = `载入失败 (${res.status})`
-    if (ct.includes('application/json')) {
-      try {
-        const data = (await res.json()) as { error?: string }
-        if (typeof data.error === 'string' && data.error) msg = data.error
-      } catch {
-        /* ignore */
-      }
-    }
-    throw new Error(msg)
-  }
-  return await res.text()
-}
-
-async function confirmLoadUrl() {
-  if (!urlLoadEnabled.value) return
-  loadErr.value = null
-  const u = validateHttpUrl(loadUrlDraft.value)
-  if (!u) {
-    loadErr.value = '请输入有效的 http 或 https 绝对 URL'
-    return
-  }
-  try {
-    const text = await fetchMarkdownFromProxy(u.href)
-    applyLoadedMarkdown(text)
-    closeLoadUrlDialog()
-  } catch (e) {
-    loadErr.value = e instanceof Error ? e.message : String(e)
-  }
-}
-
-function onPickFile(ev: Event) {
-  const input = ev.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    const text = typeof reader.result === 'string' ? reader.result : ''
-    applyLoadedMarkdown(text)
-    loadErr.value = null
-  }
-  reader.onerror = () => {
-    loadErr.value = '读取本地文件失败'
-  }
-  reader.readAsText(file, 'utf-8')
-}
-
-function onGlobalPointerDown(ev: PointerEvent) {
-  if (!loadMenuOpen.value) return
-  const root = document.getElementById('load-md-menu-root')
-  const t = ev.target as Node
-  if (root && !root.contains(t)) closeLoadMenu()
-}
-
-function onGlobalKeydown(ev: KeyboardEvent) {
-  if (ev.key !== 'Escape') return
-  if (loadUrlOpen.value) closeLoadUrlDialog()
-  else closeLoadMenu()
-}
-
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let pipelineSeq = 0
 
@@ -273,37 +118,29 @@ function debounceSourceUpdate() {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     debounceTimer = null
-    debouncedSource.value = source.value
+    debouncedSource.value = activeContent.value
   }, 320)
 }
 
-watch(source, debounceSourceUpdate, { flush: 'post' })
+watch(activeContent, debounceSourceUpdate, { flush: 'post' })
+watch(activeId, () => {
+  debouncedSource.value = activeContent.value
+  void nextTick(() => {
+    const host = previewHost.value
+    if (host) host.scrollTop = 0
+  })
+})
 
 const readingLabel = computed(() => (reading.value === 'light' ? '浅色' : '深色'))
-
 const activeChartThemeLabel = computed(
   () => MERMAID_THEMES.find((t) => t.id === chartTheme.value)?.label ?? chartTheme.value,
 )
 const editModeLabel = computed(() => (editMode.value === 'raw' ? 'Raw' : 'WYSIWYG'))
+const previewWrapClass = computed(() => (reading.value === 'light' ? 'reading-light' : 'reading-dark'))
 
-const previewWrapClass = computed(() =>
-  reading.value === 'light' ? 'reading-light' : 'reading-dark',
-)
-
-function setChartTheme(next: MermaidThemeId) {
-  chartTheme.value = next
-  persistChartTheme(next)
-}
-
-function setReading(next: ReadingMode) {
-  reading.value = next
-  persistReading(next)
-}
-
-function setEditMode(next: EditMode) {
-  editMode.value = next
-  persistEditMode(next)
-}
+function setChartTheme(next: MermaidThemeId) { chartTheme.value = next; persistChartTheme(next) }
+function setReading(next: ReadingMode) { reading.value = next; persistReading(next) }
+function setEditMode(next: EditMode) { editMode.value = next; persistEditMode(next) }
 
 async function runMarkdownPipeline() {
   const seq = ++pipelineSeq
@@ -312,75 +149,43 @@ async function runMarkdownPipeline() {
     raw = renderMarkdownToHtml(debouncedSource.value)
   } catch (e) {
     if (seq !== pipelineSeq) return
-    const msg = e instanceof Error ? e.message : String(e)
-    topError.value = msg
+    topError.value = e instanceof Error ? e.message : String(e)
     return
   }
-
   let clean: string
   try {
     clean = sanitizeMarkdownHtml(raw)
   } catch (e) {
     if (seq !== pipelineSeq) return
-    const msg = e instanceof Error ? e.message : String(e)
-    topError.value = msg
+    topError.value = e instanceof Error ? e.message : String(e)
     return
   }
-
   if (seq !== pipelineSeq) return
   topError.value = null
   const host = previewHost.value
   if (!host) return
   host.innerHTML = clean
-  persistSource(debouncedSource.value)
-
   await nextTick()
   if (seq !== pipelineSeq) return
   await renderMermaidBlocksIn(host, chartTheme.value, seq, () => pipelineSeq)
 }
 
 watch(debouncedSource, runMarkdownPipeline, { flush: 'post' })
-watch(chartTheme, () => {
-  void runMarkdownPipeline()
-})
-
+watch(chartTheme, () => { void runMarkdownPipeline() })
 watch(layout, (mode) => {
   persistLayout(mode)
-  void nextTick(() => {
-    window.dispatchEvent(new Event('resize'))
-  })
+  void nextTick(() => { window.dispatchEvent(new Event('resize')) })
 })
 watch(editMode, persistEditMode)
+watch(sidebarCollapsed, persistSidebarCollapsed)
 
 onMounted(() => {
-  debouncedSource.value = source.value
+  debouncedSource.value = activeContent.value
   void runMarkdownPipeline()
-  document.addEventListener('pointerdown', onGlobalPointerDown, true)
-  document.addEventListener('keydown', onGlobalKeydown)
 })
-
 onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onGlobalPointerDown, true)
-  document.removeEventListener('keydown', onGlobalKeydown)
+  if (debounceTimer) clearTimeout(debounceTimer)
 })
-
-function loadSample() {
-  source.value = DEFAULT_SAMPLE
-  debouncedSource.value = DEFAULT_SAMPLE
-}
-
-function exportMd() {
-  const blob = new Blob([source.value], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `markdown-${Date.now()}.md`
-  a.rel = 'noopener'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
-}
 
 const EXPORT_CSS_LIGHT = `
 body{margin:0;padding:1.25rem;font-family:system-ui,-apple-system,sans-serif;background:#f4f5f7;color:#1a1d24;}
@@ -392,7 +197,6 @@ body{margin:0;padding:1.25rem;font-family:system-ui,-apple-system,sans-serif;bac
 .md-export .mermaid-block{margin:1rem 0;}
 .md-export .mermaid-error{color:#991b1b;font-size:0.875rem;}
 `
-
 const EXPORT_CSS_DARK = `
 body{margin:0;padding:1.25rem;font-family:system-ui,-apple-system,sans-serif;background:#111827;color:#e5e7eb;}
 .md-export{max-width:52rem;margin:0 auto;}
@@ -406,11 +210,7 @@ body{margin:0;padding:1.25rem;font-family:system-ui,-apple-system,sans-serif;bac
 
 function exportHtml() {
   const host = previewHost.value
-  if (!host) {
-    window.alert('预览区未就绪。')
-    return
-  }
-
+  if (!host) { window.alert('预览区未就绪。'); return }
   const clone = host.cloneNode(true) as HTMLElement
   clone.querySelectorAll('.mermaid-block').forEach((block) => {
     const out = block.querySelector('.mermaid-out')
@@ -424,7 +224,6 @@ function exportHtml() {
     block.querySelector('.mermaid-error')?.remove()
     block.querySelector('details.mermaid-source-details')?.remove()
   })
-
   const style = reading.value === 'dark' ? EXPORT_CSS_DARK : EXPORT_CSS_LIGHT
   const doc = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -438,7 +237,6 @@ function exportHtml() {
 <div class="md-export">${clone.innerHTML}</div>
 </body>
 </html>`
-
   const blob = new Blob([doc], { type: 'text/html;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -450,198 +248,170 @@ function exportHtml() {
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+function downloadActiveMd() {
+  const out = lib.exportActiveAsMarkdown()
+  if (!out) return
+  const url = URL.createObjectURL(out.blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = out.filename
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+async function onImported(items: { title: string; content: string; titleLocked: boolean }[]) {
+  if (!items.length) return
+  let firstId: string | null = null
+  for (const it of items) {
+    const doc = await lib.createDocFromContent(it.content, {
+      title: it.title,
+      titleLocked: it.titleLocked,
+    })
+    if (!firstId) firstId = doc.id
+  }
+  if (firstId) await lib.setActive(firstId)
+  importBanner.value = `已导入 ${items.length} 篇文档`
+  setTimeout(() => { importBanner.value = null }, 4000)
+}
+
+function onImportError(message: string) {
+  importBanner.value = message
+}
+
+async function onNewDoc() {
+  await lib.createEmptyDoc()
+}
+
+async function onLoadSample() {
+  await lib.loadSampleAsNewDoc()
+}
+
+async function onSelect(id: string) { await lib.setActive(id) }
+async function onRename(id: string, newTitle: string) { await lib.renameDoc(id, newTitle) }
+async function onUnlock(id: string) { await lib.unlockTitle(id) }
+async function onDelete(id: string) { await lib.deleteDoc(id) }
 </script>
 
 <template>
-  <div class="editor-page">
-    <header class="toolbar">
-      <h1 class="title">Markdown 编辑与预览</h1>
-      <div v-if="layout !== 'code'" class="theme-group" role="group" aria-label="阅读模式">
-        <span class="theme-label">正文</span>
-        <button
-          type="button"
-          class="theme-btn"
-          :class="{ active: reading === 'light' }"
-          :aria-pressed="reading === 'light'"
-          @click="setReading('light')"
-        >
-          浅色
-        </button>
-        <button
-          type="button"
-          class="theme-btn"
-          :class="{ active: reading === 'dark' }"
-          :aria-pressed="reading === 'dark'"
-          @click="setReading('dark')"
-        >
-          深色
-        </button>
-      </div>
-      <div v-if="layout !== 'code'" class="theme-group" role="group" aria-label="图表主题">
-        <span class="theme-label">图表主题</span>
-        <button
-          v-for="t in MERMAID_THEMES"
-          :key="t.id"
-          type="button"
-          class="theme-btn"
-          :class="{ active: chartTheme === t.id }"
-          :aria-pressed="chartTheme === t.id"
-          :title="t.label"
-          @click="setChartTheme(t.id)"
-        >
-          {{ t.id }}
-        </button>
-      </div>
-      <div v-if="layout === 'code'" class="theme-group" role="group" aria-label="编辑模式">
-        <span class="theme-label">编辑模式</span>
-        <button
-          type="button"
-          class="theme-btn"
-          :class="{ active: editMode === 'raw' }"
-          :aria-pressed="editMode === 'raw'"
-          @click="setEditMode('raw')"
-        >
-          Raw
-        </button>
-        <button
-          type="button"
-          class="theme-btn"
-          :class="{ active: editMode === 'wysiwyg' }"
-          :aria-pressed="editMode === 'wysiwyg'"
-          @click="setEditMode('wysiwyg')"
-        >
-          WYSIWYG
-        </button>
-      </div>
-      <div class="toolbar-actions">
-        <label class="field-inline">
-          <span class="field-label">视图布局</span>
-          <select v-model="layout" class="select" aria-label="视图布局">
-            <option v-for="o in LAYOUT_OPTIONS" :key="o.value" :value="o.value">
-              {{ o.label }}
-            </option>
-          </select>
-        </label>
-        <div id="load-md-menu-root" class="load-md-wrap">
-          <button
-            type="button"
-            class="ghost-btn"
-            aria-haspopup="menu"
-            :aria-expanded="loadMenuOpen"
-            aria-controls="load-md-menu"
-            @click="toggleLoadMenu"
-          >
-            加载 .md
-          </button>
-          <ul
-            v-show="loadMenuOpen"
-            id="load-md-menu"
-            class="load-md-menu"
-            role="menu"
-            aria-label="加载 Markdown"
-          >
-            <li role="none">
-              <button type="button" class="load-md-menu-item" role="menuitem" @click="pickLocalMd">
-                从本地选择…
-              </button>
-            </li>
-            <li role="none">
-              <button
-                type="button"
-                class="load-md-menu-item"
-                role="menuitem"
-                :disabled="!urlLoadEnabled"
-                :title="urlMenuTitle"
-                @click="openLoadUrlDialog"
-              >
-                从 URL 载入…
-              </button>
-            </li>
-          </ul>
-          <input
-            ref="fileInputRef"
-            type="file"
-            class="visually-hidden"
-            accept=".md,.markdown,.txt,text/markdown,text/plain"
-            aria-hidden="true"
-            tabindex="-1"
-            @change="onPickFile"
-          />
-        </div>
-        <button type="button" class="primary-btn" @click="exportMd">下载 .md</button>
-        <button type="button" class="ghost-btn" @click="exportHtml">下载 HTML</button>
-        <button type="button" class="ghost-btn" @click="loadSample">载入示例</button>
-      </div>
-    </header>
-
-    <p class="hint">
-      <template v-if="layout !== 'code'">
-        阅读模式：<strong>{{ readingLabel }}</strong>；图表主题：<strong>{{ activeChartThemeLabel }}</strong>；
-      </template>
-      布局：<strong>{{ LAYOUT_OPTIONS.find((o) => o.value === layout)?.label }}</strong>
-      <template v-if="layout === 'code'">
-        ；编辑模式：<strong>{{ editModeLabel }}</strong>
-      </template>
-    </p>
-
-    <main class="main" :class="`layout-${layout}`">
-      <section v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
-        <h2 class="pane-title">源码</h2>
-        <div class="pane-body">
-          <SourceEditor
-            v-if="layout === 'split' || (layout === 'code' && editMode === 'raw')"
-            v-model="source"
-            language="markdown"
-          />
-          <TuiEditor v-else-if="layout === 'code'" v-model="source" :chart-theme="chartTheme" />
-        </div>
-      </section>
-      <section v-show="layout !== 'code'" class="pane preview-pane" aria-label="预览">
-        <h2 class="pane-title">预览</h2>
-        <div v-if="topError" class="error-banner" role="alert">
-          {{ topError }}
-        </div>
-        <div class="pane-body preview-scroll" @dblclick="onPreviewDblClick">
-          <div class="markdown-preview-wrap" :class="previewWrapClass">
-            <div ref="previewHost" class="markdown-body" />
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <Teleport to="body">
-      <div
-        v-if="loadUrlOpen"
-        class="load-md-overlay"
-        role="presentation"
-        @click.self="closeLoadUrlDialog"
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="load-md-url-title"
-          class="load-md-dialog"
-          @click.stop
-        >
-          <h3 id="load-md-url-title" class="load-md-dialog-title">从 URL 载入 Markdown</h3>
-          <label class="load-md-url-label">
-            <span class="load-md-url-label-text">URL</span>
-            <input v-model.trim="loadUrlDraft" type="url" class="load-md-url-input" autocomplete="off" />
-          </label>
-          <p v-if="loadErr" class="load-md-err" role="alert">{{ loadErr }}</p>
-          <div class="load-md-dialog-actions">
-            <button type="button" class="ghost-btn" @click="closeLoadUrlDialog">取消</button>
-            <button type="button" class="primary-btn" @click="confirmLoadUrl">载入</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-    <FloatingSourceEditor
-      ref="floatingEditorRef"
-      v-model="source"
-      language="markdown"
-      title="Markdown 源码编辑"
+  <div
+    class="editor-shell-with-sidebar"
+    :data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'"
+  >
+    <DocumentLibraryPanel
+      v-model:collapsed="sidebarCollapsed"
+      v-model:search-query="searchQuery"
+      :docs="filteredDocs"
+      :active-id="activeId"
+      :has-docs="hasDocs"
+      @select="onSelect"
+      @rename="onRename"
+      @unlock-title="onUnlock"
+      @delete="onDelete"
+      @new-doc="onNewDoc"
+      @download="downloadActiveMd"
+      @imported="onImported"
+      @import-error="onImportError"
     />
+
+    <div class="editor-page">
+      <div v-if="unavailableMessage" class="doc-library-banner" role="alert">
+        {{ unavailableMessage }}
+      </div>
+      <div v-if="importBanner" class="doc-library-banner" role="status">
+        {{ importBanner }}
+      </div>
+
+      <header class="toolbar">
+        <h1 class="title">Markdown 编辑与预览</h1>
+        <div v-if="layout !== 'code'" class="theme-group" role="group" aria-label="阅读模式">
+          <span class="theme-label">正文</span>
+          <button type="button" class="theme-btn" :class="{ active: reading === 'light' }"
+            :aria-pressed="reading === 'light'" @click="setReading('light')">浅色</button>
+          <button type="button" class="theme-btn" :class="{ active: reading === 'dark' }"
+            :aria-pressed="reading === 'dark'" @click="setReading('dark')">深色</button>
+        </div>
+        <div v-if="layout !== 'code'" class="theme-group" role="group" aria-label="图表主题">
+          <span class="theme-label">图表主题</span>
+          <button v-for="t in MERMAID_THEMES" :key="t.id" type="button" class="theme-btn"
+            :class="{ active: chartTheme === t.id }" :aria-pressed="chartTheme === t.id"
+            :title="t.label" @click="setChartTheme(t.id)">{{ t.id }}</button>
+        </div>
+        <div v-if="layout === 'code'" class="theme-group" role="group" aria-label="编辑模式">
+          <span class="theme-label">编辑模式</span>
+          <button type="button" class="theme-btn" :class="{ active: editMode === 'raw' }"
+            :aria-pressed="editMode === 'raw'" @click="setEditMode('raw')">Raw</button>
+          <button type="button" class="theme-btn" :class="{ active: editMode === 'wysiwyg' }"
+            :aria-pressed="editMode === 'wysiwyg'" @click="setEditMode('wysiwyg')">WYSIWYG</button>
+        </div>
+        <div class="toolbar-actions">
+          <label class="field-inline">
+            <span class="field-label">视图布局</span>
+            <select v-model="layout" class="select" aria-label="视图布局">
+              <option v-for="o in LAYOUT_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
+            </select>
+          </label>
+          <button type="button" class="ghost-btn" @click="exportHtml">下载 HTML</button>
+        </div>
+      </header>
+
+      <p class="hint">
+        <template v-if="layout !== 'code'">
+          阅读模式：<strong>{{ readingLabel }}</strong>；图表主题：<strong>{{ activeChartThemeLabel }}</strong>；
+        </template>
+        布局：<strong>{{ LAYOUT_OPTIONS.find((o) => o.value === layout)?.label }}</strong>
+        <template v-if="layout === 'code'">
+          ；编辑模式：<strong>{{ editModeLabel }}</strong>
+        </template>
+      </p>
+
+      <main v-if="hasDocs" class="main" :class="`layout-${layout}`">
+        <section v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
+          <h2 class="pane-title">源码</h2>
+          <div class="pane-body">
+            <SourceEditor
+              v-if="layout === 'split' || (layout === 'code' && editMode === 'raw')"
+              v-model="activeContent"
+              language="markdown"
+            />
+            <TuiEditor
+              v-else-if="layout === 'code'"
+              :key="activeId ?? 'no-doc'"
+              v-model="activeContent"
+              :chart-theme="chartTheme"
+            />
+          </div>
+        </section>
+        <section v-show="layout !== 'code'" class="pane preview-pane" aria-label="预览">
+          <h2 class="pane-title">预览</h2>
+          <div v-if="topError" class="error-banner" role="alert">{{ topError }}</div>
+          <div class="pane-body preview-scroll" @dblclick="onPreviewDblClick">
+            <div class="markdown-preview-wrap" :class="previewWrapClass">
+              <div ref="previewHost" class="markdown-body" />
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <section v-else class="doc-empty-state" aria-label="空文档库">
+        <h2>还没有文档</h2>
+        <p>新建一篇空文档开始编写，或加载示例文章查看渲染效果。</p>
+        <div class="doc-empty-actions">
+          <button type="button" class="primary-btn" @click="onNewDoc">新建空文档</button>
+          <button type="button" class="ghost-btn" @click="onLoadSample">加载示例</button>
+        </div>
+      </section>
+
+      <FloatingSourceEditor
+        ref="floatingEditorRef"
+        v-model="activeContent"
+        language="markdown"
+        title="Markdown 源码编辑"
+      />
+    </div>
   </div>
 </template>
 
@@ -970,5 +740,30 @@ function exportHtml() {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.doc-empty-state {
+  margin-top: 1rem;
+  padding: 2.5rem 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+  color: var(--text);
+}
+.doc-empty-state h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.doc-empty-state p {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.doc-empty-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
 }
 </style>
