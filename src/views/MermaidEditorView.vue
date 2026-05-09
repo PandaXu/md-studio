@@ -341,6 +341,14 @@ function exportSvg() {
   margin-right: 0.5rem;
 }
 
+.mermaid-editor-page :deep(.toolbar) {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
 .mermaid-editor-page :deep(.toolbar .theme-group--reading-end) {
   display: flex;
   align-items: center;

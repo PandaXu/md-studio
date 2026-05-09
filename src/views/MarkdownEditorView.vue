@@ -1065,11 +1065,14 @@ async function onDuplicate(id: string) {
 }
 
 .editor-page :deep(.toolbar) {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   border: none;
-  border-bottom: none;
+  border-bottom: 1px solid var(--border);
   border-radius: 0;
   padding: 0.5rem 0;
-  background: transparent;
+  background: var(--bg);
 }
 
 .editor-page :deep(.hint) {
