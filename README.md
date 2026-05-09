@@ -78,6 +78,8 @@ npm run electron:dev
 
 首次打开未签名应用时，若 macOS 拦截，可在 **系统设置 → 隐私与安全性** 中选择仍要打开，或右键应用 → 打开。
 
+应用与网站共用图标源文件 **`public/icon.png`**（1024×1024）；修改后重新执行 `npm run build` 与 `electron:pack` / `electron:build` 即可更新页签图标与 `.app` / DMG 图标。
+
 ## 脚本
 
 | 命令 | 说明 |

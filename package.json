@@ -54,6 +54,7 @@
       "package.json"
     ],
     "asar": true,
+    "icon": "public/icon.png",
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
