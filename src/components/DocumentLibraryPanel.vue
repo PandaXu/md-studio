@@ -5,6 +5,8 @@ import type { Doc, FolderRecord } from '@/markdown/documentStore'
 import DocumentImportMenu, { type DocLibraryImportPayload } from '@/components/DocumentImportMenu.vue'
 import AppModeNav from '@/components/AppModeNav.vue'
 import FolderOutlineIcon from '@/components/icons/FolderOutlineIcon.vue'
+import type { LibraryReorderPayload } from '@/composables/useDocumentLibrary'
+import { compareLibrarySiblings, effectiveDocParentId, validFolderIdSet } from '@/markdown/librarySort'
 
 type CtxTarget = { kind: 'doc'; id: string } | { kind: 'folder'; id: string }
 
@@ -14,8 +16,6 @@ type TreeRow =
   | { row: 'folder'; folder: FolderRecord; depth: number }
   | { row: 'doc'; doc: Doc; depth: number }
   | { row: 'empty'; folderId: string; depth: number }
-  | { row: 'no-folder-divider' }
-  | { row: 'root-drop' }
 
 const props = defineProps<{
   folders: readonly FolderRecord[]
@@ -42,6 +42,8 @@ const emit = defineEmits<{
   folderDelete: [id: string]
   folderDownloadZip: [id: string]
   moveDoc: [docId: string, folderId: string | null]
+  moveFolderInto: [folderId: string, targetFolderId: string]
+  reorderLibrary: [payload: LibraryReorderPayload]
   imported: [payload: DocLibraryImportPayload]
   importError: [message: string]
   newFolder: [parentId: string | null, title: string]
@@ -136,11 +138,13 @@ function persistFolderExpandedState(state: Record<string, boolean>) {
 
 const expanded = ref<Record<string, boolean>>(loadFolderExpandedState())
 
-const DRAG_DOC_MIME = 'application/x-md-studio-doc-id'
+const DRAG_LIBRARY_MIME = 'application/x-md-studio-library'
 
-/** 正在拖拽的文档 id（dragover 阶段部分浏览器无法读 dataTransfer） */
-const dragDocId = ref<string | null>(null)
-/** 当前高亮的放置区：文件夹 id 或 'root' */
+type LibraryDragSubject = { kind: 'doc' | 'folder'; id: string }
+
+/** 正在拖拽的条目（dragover 阶段部分浏览器无法读 dataTransfer） */
+const dragLibrarySubject = ref<LibraryDragSubject | null>(null)
+/** 当前高亮的「移入文件夹」目标 */
 const dropHighlight = ref<string | null>(null)
 
 function bindRenameInput(el: unknown) {
@@ -175,43 +179,45 @@ const treeRows = computed<TreeRow[]>(() => {
   const rows: TreeRow[] = []
   const fList = [...props.folders]
   const dList = [...props.docs]
-  const validFolderIds = new Set(fList.map((f) => f.id))
+  const validFolderIds = validFolderIdSet(fList)
 
-  function effectiveParentId(doc: Doc): string | null {
-    const fid = doc.folderId ?? null
-    if (!fid || !validFolderIds.has(fid)) return null
-    return fid
+  function effParent(doc: Doc): string | null {
+    return effectiveDocParentId(doc, validFolderIds)
   }
 
-  const childFolders = (pid: string | null) =>
-    fList.filter((f) => f.parentId === pid).sort((a, b) => b.updatedAt - a.updatedAt)
-  const childDocs = (pid: string | null) =>
-    dList.filter((d) => effectiveParentId(d) === pid).sort((a, b) => b.updatedAt - a.updatedAt)
+  function childEntries(pid: string | null): ({ kind: 'folder'; folder: FolderRecord } | { kind: 'doc'; doc: Doc })[] {
+    const fs = fList.filter((f) => f.parentId === pid)
+    const ds = dList.filter((d) => effParent(d) === pid)
+    const merged: ({ kind: 'folder'; folder: FolderRecord } | { kind: 'doc'; doc: Doc })[] = [
+      ...fs.map((folder) => ({ kind: 'folder' as const, folder })),
+      ...ds.map((doc) => ({ kind: 'doc' as const, doc })),
+    ]
+    merged.sort((a, b) => {
+      const itemA = a.kind === 'folder' ? a.folder : a.doc
+      const itemB = b.kind === 'folder' ? b.folder : b.doc
+      return compareLibrarySiblings(itemA, itemB)
+    })
+    return merged
+  }
 
   function walkFolder(folder: FolderRecord, depth: number) {
     rows.push({ row: 'folder', folder, depth })
     if (!isFolderExpanded(folder.id)) return
-    const cfs = childFolders(folder.id)
-    const cds = childDocs(folder.id)
-    if (cfs.length === 0 && cds.length === 0) {
+    const entries = childEntries(folder.id)
+    if (entries.length === 0) {
       rows.push({ row: 'empty', folderId: folder.id, depth: depth + 1 })
       return
     }
-    for (const cf of cfs) walkFolder(cf, depth + 1)
-    for (const d of cds) rows.push({ row: 'doc', doc: d, depth: depth + 1 })
+    for (const e of entries) {
+      if (e.kind === 'folder') walkFolder(e.folder, depth + 1)
+      else rows.push({ row: 'doc', doc: e.doc, depth: depth + 1 })
+    }
   }
 
-  const rootFolders = childFolders(null)
-  const rootDocsList = childDocs(null)
-  const docInNestedFolder = dList.some((d) => effectiveParentId(d) !== null)
-
-  for (const rf of rootFolders) walkFolder(rf, 0)
-  if (rootFolders.length > 0 && rootDocsList.length > 0) {
-    rows.push({ row: 'no-folder-divider' })
-  } else if (rootDocsList.length > 0 && docInNestedFolder && rootFolders.length === 0) {
-    rows.push({ row: 'root-drop' })
+  for (const e of childEntries(null)) {
+    if (e.kind === 'folder') walkFolder(e.folder, 0)
+    else rows.push({ row: 'doc', doc: e.doc, depth: 0 })
   }
-  for (const d of rootDocsList) rows.push({ row: 'doc', doc: d, depth: 0 })
   return rows
 })
 
@@ -508,12 +514,36 @@ function ctxMenuOpenForFolder(folderId: string, mode: 'cursor' | 'kebab'): boole
   )
 }
 
-function readDragDocId(dt: DataTransfer | null): string | null {
+function readLibrarySubject(dt: DataTransfer | null): LibraryDragSubject | null {
   if (!dt) return null
-  const a = dt.getData(DRAG_DOC_MIME).trim()
-  if (a) return a
-  const b = dt.getData('text/plain').trim()
-  return b || null
+  const raw = dt.getData(DRAG_LIBRARY_MIME).trim()
+  if (raw) {
+    try {
+      const p = JSON.parse(raw) as { kind?: unknown; id?: unknown }
+      if (p.kind === 'doc' && typeof p.id === 'string') return { kind: 'doc', id: p.id }
+      if (p.kind === 'folder' && typeof p.id === 'string') return { kind: 'folder', id: p.id }
+    } catch {
+      /* ignore */
+    }
+  }
+  const plain = dt.getData('text/plain').trim()
+  if (plain.startsWith('doc:')) return { kind: 'doc', id: plain.slice(4) }
+  if (plain.startsWith('folder:')) return { kind: 'folder', id: plain.slice(7) }
+  return null
+}
+
+function rowInsertBefore(ev: DragEvent, el: HTMLElement): boolean {
+  const r = el.getBoundingClientRect()
+  return ev.clientY < r.top + r.height / 2
+}
+
+function panelEffectiveDocParent(doc: Doc): string | null {
+  return effectiveDocParentId(doc, validFolderIdSet([...props.folders]))
+}
+
+function onLibraryDragEnd() {
+  dragLibrarySubject.value = null
+  dropHighlight.value = null
 }
 
 function onDocDragStart(doc: Doc, ev: DragEvent) {
@@ -521,59 +551,124 @@ function onDocDragStart(doc: Doc, ev: DragEvent) {
     ev.preventDefault()
     return
   }
-  dragDocId.value = doc.id
-  ev.dataTransfer?.setData(DRAG_DOC_MIME, doc.id)
-  ev.dataTransfer?.setData('text/plain', doc.id)
+  const t = ev.target as HTMLElement | null
+  if (t?.closest('.doc-panel-kebab') || t?.closest('.doc-panel-rename-input')) {
+    ev.preventDefault()
+    return
+  }
+  dragLibrarySubject.value = { kind: 'doc', id: doc.id }
+  ev.dataTransfer?.setData(DRAG_LIBRARY_MIME, JSON.stringify({ kind: 'doc', id: doc.id }))
+  ev.dataTransfer?.setData('text/plain', `doc:${doc.id}`)
   if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move'
 }
 
-function onDocDragEnd() {
-  dragDocId.value = null
-  dropHighlight.value = null
+function onFolderDragStart(folder: FolderRecord, ev: DragEvent) {
+  if (!props.treeMode || renamingFolderId.value === folder.id) {
+    ev.preventDefault()
+    return
+  }
+  const t = ev.target as HTMLElement | null
+  if (
+    t?.closest('.doc-panel-folder-chevron') ||
+    t?.closest('.doc-panel-kebab') ||
+    t?.closest('.doc-panel-folder-move-into') ||
+    t?.closest('input')
+  ) {
+    ev.preventDefault()
+    return
+  }
+  dragLibrarySubject.value = { kind: 'folder', id: folder.id }
+  ev.dataTransfer?.setData(DRAG_LIBRARY_MIME, JSON.stringify({ kind: 'folder', id: folder.id }))
+  ev.dataTransfer?.setData('text/plain', `folder:${folder.id}`)
+  if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move'
 }
 
-function onFolderDragOver(ev: DragEvent, folderId: string) {
-  if (!props.treeMode || !dragDocId.value) return
+function onDocRowDragOver(_doc: Doc, ev: DragEvent) {
+  const subj = dragLibrarySubject.value ?? readLibrarySubject(ev.dataTransfer)
+  if (!props.treeMode || !subj) return
   ev.preventDefault()
+  if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'
+}
+
+function onDocRowDrop(doc: Doc, ev: DragEvent) {
+  ev.preventDefault()
+  const subj = dragLibrarySubject.value ?? readLibrarySubject(ev.dataTransfer)
+  onLibraryDragEnd()
+  if (!subj) return
+  if (subj.kind === 'doc' && subj.id === doc.id) return
+  const el = ev.currentTarget as HTMLElement
+  const insertBefore = rowInsertBefore(ev, el)
+  const parent = panelEffectiveDocParent(doc)
+  emit('reorderLibrary', {
+    draggedKind: subj.kind,
+    draggedId: subj.id,
+    targetParentId: parent,
+    anchorKind: 'doc',
+    anchorId: doc.id,
+    insertBefore,
+  })
+}
+
+function onFolderRowDragOver(_folder: FolderRecord, ev: DragEvent) {
+  const t = ev.target as HTMLElement | null
+  if (t?.closest('.doc-panel-folder-move-into')) return
+  const subj = dragLibrarySubject.value ?? readLibrarySubject(ev.dataTransfer)
+  if (!props.treeMode || !subj) return
+  ev.preventDefault()
+  if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'
+}
+
+function onFolderRowDrop(folder: FolderRecord, ev: DragEvent) {
+  const t = ev.target as HTMLElement | null
+  if (t?.closest('.doc-panel-folder-move-into')) return
+  ev.preventDefault()
+  const subj = dragLibrarySubject.value ?? readLibrarySubject(ev.dataTransfer)
+  onLibraryDragEnd()
+  if (!subj) return
+  if (subj.kind === 'folder' && subj.id === folder.id) return
+  const el = ev.currentTarget as HTMLElement
+  const insertBefore = rowInsertBefore(ev, el)
+  emit('reorderLibrary', {
+    draggedKind: subj.kind,
+    draggedId: subj.id,
+    targetParentId: folder.parentId,
+    anchorKind: 'folder',
+    anchorId: folder.id,
+    insertBefore,
+  })
+}
+
+function onFolderMoveIntoDragOver(folderId: string, ev: DragEvent) {
+  const subj = dragLibrarySubject.value ?? readLibrarySubject(ev.dataTransfer)
+  if (!props.treeMode || !subj) return
+  if (subj.kind === 'folder' && subj.id === folderId) return
+  ev.preventDefault()
+  ev.stopPropagation()
   if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'
   dropHighlight.value = folderId
 }
 
-function onFolderDragLeave(ev: DragEvent, folderId: string) {
+function onFolderMoveIntoDragLeave(ev: DragEvent) {
   const cur = ev.currentTarget as HTMLElement
   const rel = ev.relatedTarget as Node | null
   if (rel && cur.contains(rel)) return
-  if (dropHighlight.value === folderId) dropHighlight.value = null
+  dropHighlight.value = null
 }
 
-function onRootDropZoneDragOver(ev: DragEvent) {
-  if (!props.treeMode || !dragDocId.value) return
+function onFolderMoveIntoDrop(folderId: string, ev: DragEvent) {
   ev.preventDefault()
-  if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'
-  dropHighlight.value = 'root'
-}
-
-function onRootDropZoneDragLeave(ev: DragEvent) {
-  const cur = ev.currentTarget as HTMLElement
-  const rel = ev.relatedTarget as Node | null
-  if (rel && cur.contains(rel)) return
-  if (dropHighlight.value === 'root') dropHighlight.value = null
-}
-
-function onFolderDrop(ev: DragEvent, folderId: string) {
-  ev.preventDefault()
-  const id = dragDocId.value ?? readDragDocId(ev.dataTransfer)
-  onDocDragEnd()
-  if (!id) return
-  emit('moveDoc', id, folderId)
-}
-
-function onRootDrop(ev: DragEvent) {
-  ev.preventDefault()
-  const id = dragDocId.value ?? readDragDocId(ev.dataTransfer)
-  onDocDragEnd()
-  if (!id) return
-  emit('moveDoc', id, null)
+  ev.stopPropagation()
+  const subj = dragLibrarySubject.value ?? readLibrarySubject(ev.dataTransfer)
+  onLibraryDragEnd()
+  if (!subj) return
+  if (subj.kind === 'doc') {
+    emit('moveDoc', subj.id, folderId)
+    return
+  }
+  if (subj.kind === 'folder') {
+    if (subj.id === folderId) return
+    emit('moveFolderInto', subj.id, folderId)
+  }
 }
 
 function expandFolder(id: string) {
@@ -685,7 +780,7 @@ defineExpose({ expandFolder })
       <ul v-if="treeRows.length" class="doc-panel-list doc-panel-list--tree" role="list">
         <template
           v-for="(row, idx) in treeRows"
-          :key="row.row === 'doc' ? row.doc.id : row.row === 'folder' ? row.folder.id : row.row === 'no-folder-divider' ? 'no-folder-divider' : row.row === 'root-drop' ? 'root-drop' : `e-${row.folderId}-${idx}`"
+          :key="row.row === 'doc' ? row.doc.id : row.row === 'folder' ? row.folder.id : `e-${row.folderId}-${idx}`"
         >
           <li
             v-if="row.row === 'folder'"
@@ -696,12 +791,21 @@ defineExpose({ expandFolder })
             }"
             role="none"
             :style="{ paddingLeft: `${0.55 + row.depth * 0.75}rem` }"
+            :draggable="treeMode && renamingFolderId !== row.folder.id"
             @click="onFolderRowClick($event, row.folder)"
             @contextmenu="openFolderContextMenu($event, row.folder)"
-            @dragover="onFolderDragOver($event, row.folder.id)"
-            @dragleave="onFolderDragLeave($event, row.folder.id)"
-            @drop="onFolderDrop($event, row.folder.id)"
+            @dragstart="onFolderDragStart(row.folder, $event)"
+            @dragend="onLibraryDragEnd"
+            @dragover="onFolderRowDragOver(row.folder, $event)"
+            @drop="onFolderRowDrop(row.folder, $event)"
           >
+            <span
+              class="doc-panel-folder-move-into doc-panel-folder-move-into--lead"
+              title="拖拽至此移入文件夹"
+              @dragover="onFolderMoveIntoDragOver(row.folder.id, $event)"
+              @dragleave="onFolderMoveIntoDragLeave($event)"
+              @drop="onFolderMoveIntoDrop(row.folder.id, $event)"
+            >
             <button
               type="button"
               class="doc-panel-folder-chevron"
@@ -715,6 +819,7 @@ defineExpose({ expandFolder })
             <span class="doc-panel-folder-icon" aria-hidden="true">
               <FolderOutlineIcon :size="14" />
             </span>
+            </span>
             <input
               v-if="renamingFolderId === row.folder.id"
               :ref="bindFolderRenameInput"
@@ -727,6 +832,17 @@ defineExpose({ expandFolder })
               @click.stop
             />
             <span v-else class="doc-panel-folder-title" :title="row.folder.title">{{ row.folder.title }}</span>
+            <span
+              class="doc-panel-folder-move-into doc-panel-folder-move-into--tail"
+              title="拖拽至此移入文件夹"
+              aria-label="拖拽至此移入文件夹"
+              @click.stop
+              @dragover="onFolderMoveIntoDragOver(row.folder.id, $event)"
+              @dragleave="onFolderMoveIntoDragLeave($event)"
+              @drop="onFolderMoveIntoDrop(row.folder.id, $event)"
+            >
+              <span class="doc-panel-folder-move-into-icon" aria-hidden="true">⎆</span>
+            </span>
             <button
               v-if="renamingFolderId !== row.folder.id"
               type="button"
@@ -794,36 +910,6 @@ defineExpose({ expandFolder })
           </li>
 
           <li
-            v-else-if="row.row === 'no-folder-divider'"
-            class="doc-panel-no-folder-divider"
-            :class="{ 'doc-panel-drag-over': dropHighlight === 'root' }"
-            role="separator"
-            aria-label="根目录文档（不在文件夹内）；可拖入文档移出文件夹"
-            @dragover="onRootDropZoneDragOver"
-            @dragleave="onRootDropZoneDragLeave"
-            @drop="onRootDrop"
-          >
-            <span class="doc-panel-no-folder-line" aria-hidden="true" />
-            <span class="doc-panel-no-folder-label">No Folder</span>
-            <span class="doc-panel-no-folder-line" aria-hidden="true" />
-          </li>
-
-          <li
-            v-else-if="row.row === 'root-drop'"
-            class="doc-panel-no-folder-divider doc-panel-root-drop"
-            :class="{ 'doc-panel-drag-over': dropHighlight === 'root' }"
-            role="separator"
-            aria-label="拖到此处移出到根目录"
-            @dragover="onRootDropZoneDragOver"
-            @dragleave="onRootDropZoneDragLeave"
-            @drop="onRootDrop"
-          >
-            <span class="doc-panel-no-folder-line" aria-hidden="true" />
-            <span class="doc-panel-no-folder-label">根目录</span>
-            <span class="doc-panel-no-folder-line" aria-hidden="true" />
-          </li>
-
-          <li
             v-else
             role="option"
             class="doc-panel-item doc-panel-item--nested"
@@ -835,7 +921,9 @@ defineExpose({ expandFolder })
             @dblclick="onItemDblClick(row.doc)"
             @contextmenu="openContextMenu($event, row.doc)"
             @dragstart="onDocDragStart(row.doc, $event)"
-            @dragend="onDocDragEnd"
+            @dragend="onLibraryDragEnd"
+            @dragover="onDocRowDragOver(row.doc, $event)"
+            @drop="onDocRowDrop(row.doc, $event)"
           >
             <input
               v-if="renamingId === row.doc.id"
@@ -1302,6 +1390,40 @@ defineExpose({ expandFolder })
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.doc-panel-folder-move-into {
+  flex: 0 0 auto;
+  border-radius: 4px;
+}
+
+.doc-panel-folder-move-into--lead {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.2rem;
+}
+
+.doc-panel-folder-move-into--tail {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--doc-panel-muted);
+  font-size: 0.75rem;
+  cursor: default;
+  user-select: none;
+}
+
+.doc-panel-folder-move-into--tail:hover {
+  background: var(--doc-panel-hover);
+  color: var(--doc-panel-text);
+}
+
+.doc-panel-folder-move-into-icon {
+  line-height: 1;
+  opacity: 0.75;
 }
 
 .doc-panel-folder-rename {

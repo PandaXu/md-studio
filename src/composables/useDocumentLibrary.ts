@@ -3,6 +3,14 @@ import { strToU8, zipSync } from 'fflate'
 import { openDocStore, isFolderRecord, type Doc, type DocStore, type FolderRecord } from '@/markdown/documentStore'
 import { runMigrationIfNeeded } from '@/markdown/documentMigration'
 import {
+  compareLibrarySiblings,
+  effectiveDocParentId,
+  maxSortIndexInParent,
+  migrateSortIndices,
+  needsSortIndexMigration,
+  validFolderIdSet,
+} from '@/markdown/librarySort'
+import {
   deriveTitle,
   nextUntitledOrdinal,
   safeFilenameFromTitle,
@@ -12,6 +20,15 @@ import defaultSample from '@/samples/harness-era-article.md?raw'
 
 const ACTIVE_ID_KEY = 'markdown-editor-active-doc-id'
 const AUTOSAVE_DEBOUNCE_MS = 320
+
+export type LibraryReorderPayload = {
+  draggedKind: 'doc' | 'folder'
+  draggedId: string
+  targetParentId: string | null
+  anchorKind: 'doc' | 'folder'
+  anchorId: string
+  insertBefore: boolean
+}
 
 export type LibraryStatus = 'loading' | 'ready' | 'unavailable'
 
@@ -44,6 +61,9 @@ export type LibraryHandle = {
   deleteFolder(id: string): Promise<void>
   exportFolderAsZip(folderId: string): Promise<void>
   moveDocToFolder(docId: string, folderId: string | null): Promise<void>
+  /** 将文件夹挂到另一文件夹下（成为其子文件夹） */
+  moveFolderIntoFolder(folderId: string, newParentFolderId: string): Promise<void>
+  reorderLibraryItem(payload: LibraryReorderPayload): Promise<void>
   flush(): Promise<void>
   exportDocAsMarkdown(id: string): { filename: string; blob: Blob } | null
   exportActiveAsMarkdown(): { filename: string; blob: Blob } | null
@@ -218,6 +238,8 @@ export function useDocumentLibrary(): LibraryHandle {
         ? opts.title.trim()
         : deriveTitle(content, ordinal)
     const folderId = opts?.folderId === undefined ? null : opts.folderId
+    const parent = folderId
+    const sortIdx = maxSortIndexInParent(parent, docs.value, folders.value) + 1
     const doc: Doc = {
       id: newId(),
       folderId,
@@ -226,6 +248,7 @@ export function useDocumentLibrary(): LibraryHandle {
       content,
       createdAt: ts,
       updatedAt: ts,
+      sortIndex: sortIdx,
     }
     docs.value = [doc, ...docs.value]
     if (store) await store.put(doc)
@@ -311,6 +334,8 @@ export function useDocumentLibrary(): LibraryHandle {
     if (id === activeId.value) await flush()
     const original = docs.value.find((d) => d.id === id)
     if (!original) return null
+    const parent = effectiveDocParentId(original, validFolderIdSet(folders.value))
+    const sortIdx = maxSortIndexInParent(parent, docs.value, folders.value) + 1
     const ts = Date.now()
     const dup: Doc = {
       id: newId(),
@@ -320,6 +345,7 @@ export function useDocumentLibrary(): LibraryHandle {
       content: original.content,
       createdAt: ts,
       updatedAt: ts,
+      sortIndex: sortIdx,
     }
     docs.value = [dup, ...docs.value]
     if (store) await store.put(dup)
@@ -336,13 +362,122 @@ export function useDocumentLibrary(): LibraryHandle {
     const prev = current.folderId ?? null
     if (prev === (nextFolder ?? null)) return
     const ts = Date.now()
+    const others = docs.value.filter((d) => d.id !== docId)
+    const sortIdx = maxSortIndexInParent(nextFolder ?? null, others, folders.value) + 1
     const updated: Doc = {
       ...current,
       folderId: nextFolder,
       updatedAt: ts,
+      sortIndex: sortIdx,
     }
     docs.value.splice(idx, 1, updated)
     if (store) await store.put(updated)
+  }
+
+  async function moveFolderIntoFolder(folderId: string, newParentFolderId: string): Promise<void> {
+    await flush()
+    if (folderId === newParentFolderId) return
+    if (!folders.value.some((f) => f.id === newParentFolderId)) return
+    const descendants = collectDescendantFolderIds(folderId, folders.value)
+    if (descendants.has(newParentFolderId)) return
+    const idx = folders.value.findIndex((f) => f.id === folderId)
+    if (idx === -1) return
+    const current = folders.value[idx]
+    if (current.parentId === newParentFolderId) return
+    const ts = Date.now()
+    const otherFolders = folders.value.filter((f) => f.id !== folderId)
+    const sortIdx = maxSortIndexInParent(newParentFolderId, docs.value, otherFolders) + 1
+    const updated: FolderRecord = {
+      ...current,
+      parentId: newParentFolderId,
+      updatedAt: ts,
+      sortIndex: sortIdx,
+    }
+    folders.value.splice(idx, 1, updated)
+    if (store) await store.put(updated)
+  }
+
+  async function reorderLibraryItem(payload: LibraryReorderPayload): Promise<void> {
+    if (
+      payload.draggedId === payload.anchorId &&
+      payload.draggedKind === payload.anchorKind
+    ) {
+      return
+    }
+    await flush()
+
+    const validIds = validFolderIdSet(folders.value)
+    function eff(d: Doc): string | null {
+      return effectiveDocParentId(d, validIds)
+    }
+
+    function orderedSiblingEntries(parentId: string | null): { kind: 'doc' | 'folder'; id: string }[] {
+      const fs = folders.value.filter((f) => f.parentId === parentId)
+      const ds = docs.value.filter((d) => eff(d) === parentId)
+      const merged = [
+        ...fs.map((f) => ({ kind: 'folder' as const, id: f.id, item: f })),
+        ...ds.map((d) => ({ kind: 'doc' as const, id: d.id, item: d })),
+      ]
+      merged.sort((a, b) => compareLibrarySiblings(a.item, b.item))
+      return merged.map(({ kind, id }) => ({ kind, id }))
+    }
+
+    if (payload.draggedKind === 'folder') {
+      const desc = collectDescendantFolderIds(payload.draggedId, folders.value)
+      if (payload.targetParentId !== null && desc.has(payload.targetParentId)) return
+      if (payload.targetParentId === payload.draggedId) return
+    }
+
+    const parent = payload.targetParentId
+    if (parent != null && !folders.value.some((f) => f.id === parent)) return
+
+    let list = orderedSiblingEntries(parent)
+    const dragIdx = list.findIndex(
+      (e) => e.id === payload.draggedId && e.kind === payload.draggedKind,
+    )
+    if (dragIdx < 0) return
+    list.splice(dragIdx, 1)
+
+    const anchorIdx = list.findIndex(
+      (e) => e.id === payload.anchorId && e.kind === payload.anchorKind,
+    )
+    if (anchorIdx < 0) return
+
+    const insertAt = payload.insertBefore ? anchorIdx : anchorIdx + 1
+    list.splice(insertAt, 0, { kind: payload.draggedKind, id: payload.draggedId })
+
+    const nextDocs = docs.value.map((d) => ({ ...d }))
+    const nextFolders = folders.value.map((f) => ({ ...f }))
+
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i]
+      if (e.kind === 'doc') {
+        const d = nextDocs.find((x) => x.id === e.id)
+        if (!d) continue
+        d.sortIndex = i
+        d.folderId = parent
+      } else {
+        const f = nextFolders.find((x) => x.id === e.id)
+        if (!f) continue
+        f.sortIndex = i
+        f.parentId = parent
+      }
+    }
+
+    docs.value = nextDocs
+    folders.value = nextFolders
+
+    if (!store) return
+    const toPut = new Set<string>()
+    for (const e of list) {
+      toPut.add(e.id)
+    }
+    for (const id of toPut) {
+      const d = nextDocs.find((x) => x.id === id)
+      const f = nextFolders.find((x) => x.id === id)
+      if (d) await store.put(d)
+      else if (f) await store.put(f)
+    }
   }
 
   const FOLDER_TITLE_MAX = 80
@@ -357,6 +492,7 @@ export function useDocumentLibrary(): LibraryHandle {
     const trimmed = preferredTitle?.replace(/\s+/g, ' ').trim() ?? ''
     const title =
       trimmed.length > 0 ? clipFolderTitle(trimmed) : nextFolderTitle(parentId, folders.value)
+    const sortIdx = maxSortIndexInParent(parentId, docs.value, folders.value) + 1
     const folder: FolderRecord = {
       id: newId(),
       kind: 'folder',
@@ -364,6 +500,7 @@ export function useDocumentLibrary(): LibraryHandle {
       parentId,
       createdAt: ts,
       updatedAt: ts,
+      sortIndex: sortIdx,
     }
     folders.value = [...folders.value, folder]
     if (store) await store.put(folder)
@@ -435,10 +572,10 @@ export function useDocumentLibrary(): LibraryHandle {
     function addDocsInFolder(fid: string, path: string) {
       const childFolders = folders.value
         .filter((f) => f.parentId === fid)
-        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .sort(compareLibrarySiblings)
       const childDocs = docs.value
         .filter((d) => (d.folderId ?? null) === fid)
-        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .sort(compareLibrarySiblings)
       for (const cf of childFolders) {
         addDocsInFolder(cf.id, `${path}${fsSafeSegment(cf.title)}/`)
       }
@@ -506,6 +643,13 @@ export function useDocumentLibrary(): LibraryHandle {
       }
       docs.value = nextDocs
       folders.value = nextFolders
+      if (needsSortIndexMigration(nextDocs, nextFolders)) {
+        const migrated = migrateSortIndices(nextDocs, nextFolders)
+        docs.value = migrated.docs
+        folders.value = migrated.folders
+        for (const d of migrated.docs) await store.put(d)
+        for (const f of migrated.folders) await store.put(f)
+      }
       const stored = readStoredActiveId()
       const candidate = (stored && nextDocs.find((d) => d.id === stored)) || null
       const initial =
@@ -561,6 +705,8 @@ export function useDocumentLibrary(): LibraryHandle {
     deleteFolder,
     exportFolderAsZip,
     moveDocToFolder,
+    moveFolderIntoFolder,
+    reorderLibraryItem,
     flush,
     exportDocAsMarkdown,
     exportActiveAsMarkdown,

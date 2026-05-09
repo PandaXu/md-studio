@@ -8,7 +8,7 @@ import DocumentLibraryPanel from '@/components/DocumentLibraryPanel.vue'
 import type { DocLibraryImportPayload } from '@/components/DocumentImportMenu.vue'
 import EditorHistoryButtons from '@/components/EditorHistoryButtons.vue'
 import { useAppReading } from '@/composables/useAppReading'
-import { useDocumentLibrary } from '@/composables/useDocumentLibrary'
+import { useDocumentLibrary, type LibraryReorderPayload } from '@/composables/useDocumentLibrary'
 import { useTextEditHistory } from '@/composables/useTextEditHistory'
 import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
@@ -148,6 +148,10 @@ const {
   hasLibraryItems,
   hasDocs,
 } = lib
+
+async function onLibraryReorder(payload: LibraryReorderPayload) {
+  await lib.reorderLibraryItem(payload)
+}
 
 const displayPanelDocs = computed(() => (treeMode.value ? docs.value : filteredDocs.value))
 
@@ -419,6 +423,11 @@ async function onMoveDoc(docId: string, folderId: string | null) {
   if (folderId) docLibraryPanelRef.value?.expandFolder?.(folderId)
 }
 
+async function onMoveFolderInto(folderId: string, targetFolderId: string) {
+  await lib.moveFolderIntoFolder(folderId, targetFolderId)
+  docLibraryPanelRef.value?.expandFolder?.(targetFolderId)
+}
+
 async function onImported(payload: DocLibraryImportPayload) {
   const { items, folderId } = payload
   if (!items.length) return
@@ -528,6 +537,8 @@ async function onDuplicate(id: string) {
         @folder-delete="onFolderDelete"
         @folder-download-zip="onFolderDownloadZip"
         @move-doc="onMoveDoc"
+        @move-folder-into="onMoveFolderInto"
+        @reorder-library="onLibraryReorder"
         @imported="onImported"
         @import-error="onImportError"
       />

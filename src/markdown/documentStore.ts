@@ -7,6 +7,8 @@ export type Doc = {
   content: string
   createdAt: number
   updatedAt: number
+  /** 同级排序序号，越小越靠前；缺省时由迁移或新建逻辑补齐 */
+  sortIndex?: number
 }
 
 export type FolderRecord = {
@@ -17,6 +19,7 @@ export type FolderRecord = {
   parentId: string | null
   createdAt: number
   updatedAt: number
+  sortIndex?: number
 }
 
 export type StoredItem = Doc | FolderRecord
