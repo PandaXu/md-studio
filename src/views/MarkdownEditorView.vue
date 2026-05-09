@@ -305,24 +305,24 @@ onBeforeUnmount(() => {
 })
 
 const EXPORT_CSS_LIGHT = `
-body{margin:0;padding:1.25rem;font-family:system-ui,-apple-system,sans-serif;background:#f4f5f7;color:#1a1d24;}
+body{margin:0;padding:1.25rem;font-family:-apple-system,'SF Pro Display',sans-serif;background:#fff;color:#37352f;}
 .md-export{max-width:52rem;margin:0 auto;}
 .md-export table{border-collapse:collapse;width:100%;margin:0.75rem 0;}
-.md-export th,.md-export td{border:1px solid #d8dce3;padding:0.35rem 0.5rem;}
-.md-export pre{background:#f4f5f7;padding:0.75rem;border-radius:6px;overflow:auto;}
+.md-export th,.md-export td{border:1px solid rgba(0,0,0,0.08);padding:0.35rem 0.5rem;}
+.md-export pre{background:#f7f6f3;padding:0.75rem;border-radius:4px;overflow:auto;}
 .md-export code{font-size:0.9em;}
 .md-export .mermaid-block{margin:1rem 0;}
-.md-export .mermaid-error{color:#991b1b;font-size:0.875rem;}
+.md-export .mermaid-error{color:#e5484d;font-size:0.875rem;}
 `
 const EXPORT_CSS_DARK = `
-body{margin:0;padding:1.25rem;font-family:system-ui,-apple-system,sans-serif;background:#111827;color:#e5e7eb;}
+body{margin:0;padding:1.25rem;font-family:-apple-system,'SF Pro Display',sans-serif;background:#191919;color:#e6e6e6;}
 .md-export{max-width:52rem;margin:0 auto;}
 .md-export table{border-collapse:collapse;width:100%;margin:0.75rem 0;}
-.md-export th,.md-export td{border:1px solid #374151;padding:0.35rem 0.5rem;}
-.md-export pre{background:#1f2937;padding:0.75rem;border-radius:6px;overflow:auto;}
+.md-export th,.md-export td{border:1px solid rgba(255,255,255,0.06);padding:0.35rem 0.5rem;}
+.md-export pre{background:#202020;padding:0.75rem;border-radius:4px;overflow:auto;}
 .md-export code{font-size:0.9em;}
 .md-export .mermaid-block{margin:1rem 0;}
-.md-export .mermaid-error{color:#fca5a5;font-size:0.875rem;}
+.md-export .mermaid-error{color:#f87171;font-size:0.875rem;}
 `
 
 function exportHtml() {
@@ -572,7 +572,11 @@ async function onDuplicate(id: string) {
           :aria-expanded="!sidebarCollapsed"
           :title="sidebarCollapsed ? '展开左侧文档库（列表与导入）' : '收起左侧文档库，扩大编辑区域'"
           @click="sidebarCollapsed = !sidebarCollapsed"
-        >≡</button>
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
         <h1 class="doc-title" :class="{ muted: !activeDoc }">
           {{ activeDoc?.title ?? '未选中文档' }}
         </h1>
@@ -718,27 +722,25 @@ async function onDuplicate(id: string) {
 
 <style scoped>
 .toolbar-toggle {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font: inherit;
-  font-size: 1.1rem;
-  line-height: 1;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 4px;
   background: transparent;
-  color: var(--text);
+  color: var(--muted);
   cursor: pointer;
 }
 
 .toolbar-toggle:hover {
-  background: rgba(15, 23, 42, 0.04);
+  background: var(--doc-panel-hover);
+  color: var(--text);
 }
 
-[data-reading='dark'] .toolbar-toggle:hover {
-  background: rgba(255, 255, 255, 0.05);
+.toolbar-toggle svg {
+  display: block;
 }
 
 .doc-title {
@@ -755,21 +757,21 @@ async function onDuplicate(id: string) {
 
 .doc-title.muted {
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .markdown-preview-wrap {
-  border-radius: 8px;
+  border-radius: 0;
   padding: 0.75rem 1rem;
   min-height: 2rem;
 }
 
 .editor-page.reading-light {
-  --md-text: #1a1d24;
-  --md-muted: #5c6578;
-  --md-bg: #f9fafb;
-  --md-border: #e5e7eb;
-  --md-code-bg: #f3f4f6;
+  --md-text: #37352f;
+  --md-muted: #9b9a97;
+  --md-bg: #ffffff;
+  --md-border: rgba(0, 0, 0, 0.08);
+  --md-code-bg: #f7f6f3;
   --md-line-height: 1.7;
   --md-heading-line: 1.28;
   background: var(--md-bg);
@@ -777,11 +779,11 @@ async function onDuplicate(id: string) {
 }
 
 .editor-page.reading-dark {
-  --md-text: #e5e7eb;
-  --md-muted: #9ca3af;
-  --md-bg: #1f2937;
-  --md-border: #374151;
-  --md-code-bg: #111827;
+  --md-text: #e6e6e6;
+  --md-muted: #9b9b9b;
+  --md-bg: #191919;
+  --md-border: rgba(255, 255, 255, 0.06);
+  --md-code-bg: #202020;
   --md-line-height: 1.72;
   --md-heading-line: 1.3;
   background: var(--md-bg);
@@ -789,13 +791,13 @@ async function onDuplicate(id: string) {
 }
 
 .editor-page.reading-dark :deep(.pane) {
-  background: #111827;
+  background: #202020;
   border-color: var(--md-border);
   color: var(--md-text);
 }
 
 .editor-page.reading-dark :deep(.pane-title) {
-  background: #0f172a;
+  background: transparent;
   border-color: var(--md-border);
   color: var(--md-muted);
 }
@@ -809,7 +811,7 @@ async function onDuplicate(id: string) {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  gap: 0.4rem;
+  gap: 0.3rem;
   margin-left: auto;
   justify-content: flex-end;
 }
@@ -824,40 +826,28 @@ async function onDuplicate(id: string) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2rem;
-  min-height: 2rem;
-  padding: 0.2rem;
-  border-color: var(--md-border, var(--border));
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0.15rem;
+  border-color: transparent;
   background: transparent;
-  color: var(--md-text, var(--text));
+  color: var(--muted);
 }
 
-.editor-page :deep(.theme-btn.theme-btn--reading-icon:hover:not(.active)) {
-  border-color: #1a1a1e;
-  color: #1a1a1e;
+.editor-page :deep(.theme-btn.theme-btn--reading-icon:hover) {
+  background: var(--doc-panel-hover);
+  color: var(--text);
 }
 
 .editor-page :deep(.theme-btn.theme-btn--reading-icon.active) {
-  background: #1a1a1e;
-  border-color: #1a1a1e;
-  color: #fafafa;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
 }
 
 .editor-page :deep(.theme-btn.theme-btn--reading-icon:focus-visible) {
-  outline: 2px solid #1a1a1e;
-  outline-offset: 2px;
-}
-
-/* 深色阅读：hover / 选中不用蓝紫，用中性对比 */
-.editor-page.reading-dark :deep(.theme-btn.theme-btn--reading-icon:hover:not(.active)) {
-  border-color: #d1d5db;
-  color: #f9fafb;
-}
-
-.editor-page.reading-dark :deep(.theme-btn.theme-btn--reading-icon.active) {
-  background: #f3f4f6;
-  border-color: #f3f4f6;
-  color: #111827;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .editor-page :deep(.theme-btn--reading-icon svg) {
@@ -870,37 +860,37 @@ async function onDuplicate(id: string) {
 }
 
 .markdown-body :deep(h1) {
-  margin: 0 0 0.75rem;
-  padding-bottom: 0.35rem;
-  font-size: 1.5rem;
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.25rem;
+  font-size: 1.75rem;
   font-weight: 700;
   line-height: var(--md-heading-line, 1.28);
   border-bottom: 1px solid var(--md-border);
 }
 
 .markdown-body :deep(h2) {
-  margin: 1.75rem 0 0.65rem;
-  font-size: 1.25rem;
-  font-weight: 650;
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.3rem;
+  font-weight: 600;
   line-height: var(--md-heading-line, 1.28);
 }
 
 .markdown-body :deep(h2:first-child),
 .markdown-body :deep(h1 + h2) {
-  margin-top: 0.35rem;
+  margin-top: 0.25rem;
 }
 
 .markdown-body :deep(h3) {
-  margin: 1.35rem 0 0.5rem;
-  font-size: 1.0625rem;
-  font-weight: 650;
+  margin: 1.25rem 0 0.4rem;
+  font-size: 1.1rem;
+  font-weight: 600;
   line-height: var(--md-heading-line, 1.28);
 }
 
 .markdown-body :deep(h4),
 .markdown-body :deep(h5),
 .markdown-body :deep(h6) {
-  margin: 1.1rem 0 0.4rem;
+  margin: 1rem 0 0.35rem;
   font-size: 1rem;
   font-weight: 600;
   line-height: var(--md-heading-line, 1.28);
@@ -908,7 +898,7 @@ async function onDuplicate(id: string) {
 }
 
 .markdown-body :deep(p) {
-  margin: 0 0 0.9rem;
+  margin: 0 0 0.5rem;
   line-height: inherit;
 }
 
@@ -917,23 +907,23 @@ async function onDuplicate(id: string) {
 }
 
 .markdown-body :deep(a) {
-  color: var(--accent, #2563eb);
+  color: var(--accent);
 }
 
 .markdown-body :deep(blockquote) {
-  margin: 0.85rem 0;
-  padding: 0.35rem 0 0.35rem 1rem;
+  margin: 0.5rem 0;
+  padding: 0.25rem 0 0.25rem 0.8rem;
   border-left: 3px solid var(--md-border);
   color: var(--md-muted);
   line-height: inherit;
 }
 
 .markdown-body :deep(blockquote p) {
-  margin: 0.35rem 0;
+  margin: 0.25rem 0;
 }
 
 .markdown-body :deep(hr) {
-  margin: 1.35rem 0;
+  margin: 1rem 0;
   border: none;
   border-top: 1px solid var(--md-border);
 }
@@ -941,7 +931,7 @@ async function onDuplicate(id: string) {
 .markdown-body :deep(table) {
   border-collapse: collapse;
   width: 100%;
-  margin: 1rem 0;
+  margin: 0.75rem 0;
   font-size: 0.875rem;
   line-height: 1.55;
 }
@@ -949,7 +939,7 @@ async function onDuplicate(id: string) {
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
   border: 1px solid var(--md-border);
-  padding: 0.45rem 0.6rem;
+  padding: 0.35rem 0.5rem;
   vertical-align: top;
 }
 
@@ -959,32 +949,32 @@ async function onDuplicate(id: string) {
 
 .markdown-body :deep(ul),
 .markdown-body :deep(ol) {
-  margin: 0.5rem 0 0.9rem;
+  margin: 0.25rem 0 0.5rem;
   padding-left: 1.35rem;
   line-height: inherit;
 }
 
 .markdown-body :deep(li) {
-  margin: 0.28rem 0;
-  padding-left: 0.15rem;
+  margin: 0.15rem 0;
+  padding-left: 0.1rem;
 }
 
 .markdown-body :deep(li > p) {
-  margin: 0.35rem 0;
+  margin: 0.25rem 0;
 }
 
 .markdown-body :deep(ul ul),
 .markdown-body :deep(ol ol),
 .markdown-body :deep(ul ol),
 .markdown-body :deep(ol ul) {
-  margin: 0.35rem 0 0.5rem;
+  margin: 0.2rem 0 0.3rem;
 }
 
 .markdown-body :deep(pre) {
-  margin: 0.85rem 0;
+  margin: 0.5rem 0;
   background: var(--md-code-bg);
-  padding: 0.85rem 1rem;
-  border-radius: 6px;
+  padding: 0.75rem 0.85rem;
+  border-radius: 4px;
   overflow: auto;
   font-size: 0.8125rem;
   line-height: 1.55;
@@ -999,10 +989,11 @@ async function onDuplicate(id: string) {
 .markdown-body :deep(li code),
 .markdown-body :deep(td code),
 .markdown-body :deep(th code) {
-  padding: 0.12em 0.4em;
-  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
   background: var(--md-code-bg);
   font-size: 0.88em;
+  color: #e5484d;
 }
 
 .markdown-body :deep(pre code) {
@@ -1010,95 +1001,88 @@ async function onDuplicate(id: string) {
   border-radius: 0;
   background: transparent;
   font-size: inherit;
+  color: inherit;
 }
 
 .markdown-body :deep(.mermaid-block) {
-  margin: 1rem 0;
+  margin: 0.75rem 0;
 }
 
 .markdown-body :deep(details.mermaid-source-details) {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.35rem;
   border: 1px solid var(--md-border);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--md-code-bg);
   overflow: hidden;
 }
 
 .markdown-body :deep(summary.mermaid-source-summary) {
   cursor: pointer;
-  padding: 0.45rem 0.65rem;
+  padding: 0.35rem 0.55rem;
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--md-muted);
   user-select: none;
   list-style-position: outside;
 }
 
 .markdown-body :deep(summary.mermaid-source-summary:hover) {
-  color: var(--accent, #2563eb);
+  color: var(--md-text);
 }
 
 .markdown-body :deep(details.mermaid-source-details pre.mermaid-source) {
   margin: 0;
   border-top: 1px solid var(--md-border);
-  border-radius: 0 0 6px 6px;
+  border-radius: 0 0 4px 4px;
 }
 
 .markdown-body :deep(.mermaid-error) {
   font-size: 0.8125rem;
-  color: var(--error-text, #991b1b);
+  color: var(--error-text);
   white-space: pre-wrap;
 }
 
-.editor-page.reading-dark .markdown-body :deep(.mermaid-error) {
-  color: #fca5a5;
-}
-
 .doc-empty-state {
-  margin-top: 1rem;
-  padding: 2.5rem 1.5rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  margin-top: 2rem;
+  padding: 2rem 1.5rem;
   text-align: center;
   color: var(--text);
 }
 .doc-empty-state h2 {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.25rem;
   font-size: 1.1rem;
   font-weight: 600;
 }
 .doc-empty-state p {
-  margin: 0 0 1rem;
+  margin: 0 0 0.75rem;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 .doc-empty-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
   justify-content: center;
 }
 
 .editor-page :deep(.toolbar) {
   border: none;
-  border-bottom: 1px solid var(--md-border, var(--border));
+  border-bottom: none;
   border-radius: 0;
-  padding: 0.6rem 1rem;
+  padding: 0.5rem 0;
   background: transparent;
 }
 
 .editor-page :deep(.hint) {
-  margin: 0.4rem 0 0;
+  margin: 0.35rem 0 0;
   font-size: 0.75rem;
   color: var(--muted);
 }
 
-/* 文档库右缘拖拽调宽 */
 .doc-sidebar-resizer {
   position: absolute;
   top: 0;
   right: 0;
-  width: 8px;
+  width: 4px;
   height: 100%;
   cursor: col-resize;
   z-index: 5;
@@ -1107,15 +1091,11 @@ async function onDuplicate(id: string) {
 }
 
 .doc-sidebar-resizer:hover {
-  background: rgba(99, 102, 241, 0.12);
-}
-
-[data-reading='dark'] .doc-sidebar-resizer:hover {
-  background: rgba(129, 140, 248, 0.14);
+  background: var(--doc-panel-border);
 }
 
 .doc-sidebar-resizer:focus-visible {
-  outline: 2px solid var(--doc-panel-active-bar, #4f46e5);
-  outline-offset: -2px;
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
 }
 </style>

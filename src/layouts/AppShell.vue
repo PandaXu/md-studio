@@ -13,6 +13,6 @@ import { RouterView } from 'vue-router'
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 1rem clamp(0.75rem, 2vw, 1.5rem) 2rem;
+  padding: 0.75rem clamp(0.75rem, 2vw, 1.5rem) 2rem;
 }
 </style>

@@ -29,7 +29,12 @@ function toggle() {
     :title="title"
     @click="toggle"
   >
-    <span class="app-mode-toggle-ico" aria-hidden="true">⇄</span>
+    <svg class="app-mode-toggle-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="17 1 21 5 17 9"/>
+      <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+      <polyline points="7 23 3 19 7 15"/>
+      <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+    </svg>
     {{ targetLabel }}
   </button>
 </template>
@@ -45,13 +50,13 @@ function toggle() {
   font: inherit;
   font-size: 0.7rem;
   font-weight: 500;
-  height: 32px;
-  min-height: 32px;
-  padding: 0 0.5rem;
-  border-radius: 8px;
-  border: 1px solid var(--doc-toolbar-icon-border, var(--doc-panel-border, rgb(213, 212, 226)));
-  background: var(--doc-toolbar-icon-bg, var(--doc-panel-surface, #fff));
-  color: var(--doc-toolbar-icon-color, var(--doc-panel-text, #1f2937));
+  height: 28px;
+  min-height: 28px;
+  padding: 0 0.45rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--doc-toolbar-icon-color);
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
@@ -59,18 +64,17 @@ function toggle() {
 }
 
 .app-mode-toggle:hover {
-  filter: brightness(0.97);
-  border-color: var(--doc-panel-active-bar, #4f46e5);
-  color: var(--doc-panel-active-bar, #4f46e5);
+  background: var(--doc-panel-hover);
+  color: var(--doc-panel-text);
 }
 
 .app-mode-toggle:focus-visible {
-  outline: 2px solid var(--doc-panel-active-bar, #4f46e5);
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .app-mode-toggle-ico {
-  font-size: 0.75rem;
-  opacity: 0.85;
+  flex-shrink: 0;
+  opacity: 0.6;
 }
 </style>

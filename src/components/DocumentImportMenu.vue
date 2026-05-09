@@ -500,12 +500,12 @@ onBeforeUnmount(() => {
   font: inherit;
   margin: 0;
   padding: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--doc-toolbar-icon-border, rgb(213, 212, 226));
-  background: var(--doc-toolbar-icon-bg, rgba(0, 0, 0, 0.03));
-  color: var(--doc-toolbar-icon-color, rgb(85, 82, 122));
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--doc-toolbar-icon-color);
   cursor: pointer;
   line-height: 0;
   display: flex;
@@ -518,7 +518,8 @@ onBeforeUnmount(() => {
 }
 
 .doc-import-trigger:hover:not(:disabled) {
-  filter: brightness(0.97);
+  background: var(--doc-panel-hover);
+  color: var(--doc-panel-text);
 }
 
 .doc-import-trigger:disabled {
@@ -528,12 +529,12 @@ onBeforeUnmount(() => {
 
 .doc-import-menu {
   margin: 0;
-  padding: 0.25rem 0;
+  padding: 0.2rem 0;
   list-style: none;
-  background: var(--surface, #fff);
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
 }
 
 .doc-import-menu--floating {
@@ -545,19 +546,19 @@ onBeforeUnmount(() => {
   text-align: left;
   font: inherit;
   font-size: 0.8125rem;
-  padding: 0.45rem 0.85rem;
+  padding: 0.35rem 0.75rem;
   border: none;
   background: transparent;
-  color: var(--text, #111);
+  color: var(--text);
   cursor: pointer;
 }
 
 .doc-import-menu-item:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.08);
+  background: var(--doc-panel-hover);
 }
 
 .doc-import-menu-item:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -576,53 +577,62 @@ onBeforeUnmount(() => {
 .doc-import-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 18, 28, 0.45);
+  background: rgba(0, 0, 0, 0.3);
   display: grid;
   place-items: center;
   z-index: 100;
 }
 
 .doc-import-dialog {
-  width: min(520px, calc(100vw - 2rem));
-  padding: 1rem 1.1rem;
-  border-radius: 10px;
-  background: var(--surface, #fff);
-  border: 1px solid var(--border, #e5e7eb);
+  width: min(480px, calc(100vw - 2rem));
+  padding: 1.1rem 1.1rem;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
 }
 
 .doc-import-dialog-title {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .doc-import-url-label {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.3rem;
   font-size: 0.8125rem;
 }
 
 .doc-import-url-label-text {
-  color: var(--muted, #5c6578);
+  color: var(--muted);
 }
 
 .doc-import-url-input {
   font: inherit;
   font-size: 0.9rem;
-  padding: 0.45rem 0.55rem;
-  border-radius: 6px;
-  border: 1px solid var(--border, #e5e7eb);
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.doc-import-url-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .doc-import-err {
-  margin: 0.5rem 0 0;
-  color: #b45309;
+  margin: 0.4rem 0 0;
+  color: var(--error-text);
   font-size: 0.8125rem;
 }
 
 .doc-import-dialog-actions {
-  margin-top: 0.85rem;
+  margin-top: 0.75rem;
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 </style>

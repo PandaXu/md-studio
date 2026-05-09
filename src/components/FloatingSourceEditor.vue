@@ -132,7 +132,9 @@ defineExpose({ open, close, toggle })
             title="关闭浮动编辑器（Esc）"
             aria-label="关闭"
             @click="close"
-          >✕</button>
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </header>
         <div ref="host" class="floating-editor-host" />
       </div>
@@ -144,7 +146,7 @@ defineExpose({ open, close, toggle })
 .floating-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 18, 28, 0.45);
+  background: rgba(0, 0, 0, 0.3);
   display: grid;
   place-items: center;
   z-index: 51;
@@ -157,10 +159,11 @@ defineExpose({ open, close, toggle })
   height: 75vh;
   max-width: 960px;
   max-height: 720px;
-  border-radius: 10px;
-  background: var(--surface, #ffffff);
-  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
   overflow: hidden;
+  box-shadow: var(--shadow-lg);
 }
 
 .floating-header {
@@ -168,30 +171,35 @@ defineExpose({ open, close, toggle })
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border, #e0e0e0);
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  background: transparent;
 }
 
 .floating-title {
   margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
 }
 
 .floating-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1rem;
-  color: var(--muted, #888);
-  padding: 4px 8px;
-  border-radius: 4px;
-  line-height: 1;
+  color: var(--muted);
+  padding: 4px;
+  border-radius: 3px;
+  line-height: 0;
 }
 
 .floating-close:hover {
-  background: var(--hover-bg, rgba(0, 0, 0, 0.06));
+  background: var(--doc-panel-hover);
+  color: var(--text);
 }
 
 .floating-editor-host {

@@ -338,14 +338,14 @@ function exportSvg() {
 <style scoped>
 .mermaid-toolbar-mode-nav {
   flex: 0 0 auto;
-  margin-right: 0.65rem;
+  margin-right: 0.5rem;
 }
 
 .mermaid-editor-page :deep(.toolbar .theme-group--reading-end) {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  gap: 0.4rem;
+  gap: 0.3rem;
   margin-left: auto;
   justify-content: flex-end;
 }
@@ -360,39 +360,28 @@ function exportSvg() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2rem;
-  min-height: 2rem;
-  padding: 0.2rem;
-  border-color: var(--border);
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0.15rem;
+  border-color: transparent;
   background: transparent;
+  color: var(--muted);
+}
+
+.mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon:hover) {
+  background: var(--doc-panel-hover);
   color: var(--text);
 }
 
-.mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon:hover:not(.active)) {
-  border-color: #1a1a1e;
-  color: #1a1a1e;
-}
-
 .mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon.active) {
-  background: #1a1a1e;
-  border-color: #1a1a1e;
-  color: #fafafa;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
 }
 
 .mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon:focus-visible) {
-  outline: 2px solid #1a1a1e;
-  outline-offset: 2px;
-}
-
-[data-reading='dark'] .mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon:hover:not(.active)) {
-  border-color: #d1d5db;
-  color: #f9fafb;
-}
-
-[data-reading='dark'] .mermaid-editor-page :deep(.theme-btn.theme-btn--reading-icon.active) {
-  background: #f3f4f6;
-  border-color: #f3f4f6;
-  color: #111827;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .mermaid-editor-page :deep(.theme-btn--reading-icon svg) {

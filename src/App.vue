@@ -9,63 +9,68 @@ import AppShell from '@/layouts/AppShell.vue'
 
 <style>
 :root {
-  --bg: #f4f5f7;
-  --surface: #fff;
-  --border: #d8dce3;
-  --text: #1a1d24;
-  --muted: #5c6578;
-  --accent: #2563eb;
+  /* Notion-style — light */
+  --bg: #ffffff;
+  --surface: #fbfbfa;
+  --border: rgba(0, 0, 0, 0.08);
+  --text: #37352f;
+  --muted: #9b9a97;
+  --accent: #2383e2;
+  --accent-soft: rgba(35, 131, 226, 0.08);
+  --accent-dim: #1a6bc0;
+  --shadow-sm: none;
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
   --error-bg: #fef2f2;
-  --error-border: #fecaca;
-  --error-text: #991b1b;
+  --error-border: rgba(239, 68, 68, 0.2);
+  --error-text: #e5484d;
 
-  /* Doc panel — light */
-  --doc-panel-bg: #fafbfc;
+  --doc-panel-bg: #fbfbfa;
   --doc-panel-surface: #ffffff;
-  --doc-panel-text: #1f2937;
-  --doc-panel-muted: #6b7280;
-  --doc-panel-border: rgba(15, 23, 42, 0.06);
-  --doc-panel-hover: rgba(15, 23, 42, 0.04);
-  --doc-panel-active-bg: rgba(99, 102, 241, 0.08);
-  --doc-panel-active-bar: #4f46e5;
-
-  /* Library toolbar icon buttons (32×32) */
-  --doc-toolbar-icon-bg: rgba(0, 0, 0, 0.03);
-  --doc-toolbar-icon-border: rgb(213, 212, 226);
-  --doc-toolbar-icon-color: rgb(85, 82, 122);
-  /* 新建文档主按钮：灰黑偏黑 */
-  --doc-toolbar-icon-primary-start: #3a3a42;
-  --doc-toolbar-icon-primary-end: #232326;
-  /* 文档库「No Folder」等分隔标签 */
-  --doc-panel-no-folder-label: #2a2a30;
+  --doc-panel-text: #37352f;
+  --doc-panel-muted: #9b9a97;
+  --doc-panel-border: rgba(0, 0, 0, 0.06);
+  --doc-panel-hover: rgba(0, 0, 0, 0.04);
+  --doc-panel-active-bg: rgba(0, 0, 0, 0.04);
+  --doc-panel-active-bar: #37352f;
+  --doc-toolbar-icon-bg: #ffffff;
+  --doc-toolbar-icon-border: rgba(0, 0, 0, 0.08);
+  --doc-toolbar-icon-color: #6b6b67;
+  --doc-toolbar-icon-primary-start: #37352f;
+  --doc-toolbar-icon-primary-end: #37352f;
+  --doc-panel-no-folder-label: #9b9a97;
 }
 
 [data-reading='dark'] {
-  /* 与 Markdown 深色正文一致，扩展到整站壳层 */
-  --bg: #0f1419;
-  --surface: #161b22;
-  --border: rgba(255, 255, 255, 0.1);
-  --text: #e5e7eb;
-  --muted: #9ca3af;
-  --accent: #60a5fa;
-  --error-bg: rgba(127, 29, 29, 0.25);
-  --error-border: rgba(248, 113, 113, 0.35);
-  --error-text: #fecaca;
+  --bg: #191919;
+  --surface: #202020;
+  --border: rgba(255, 255, 255, 0.06);
+  --text: #e6e6e6;
+  --muted: #9b9b9b;
+  --accent: #529cca;
+  --accent-soft: rgba(82, 156, 202, 0.1);
+  --accent-dim: #3d7ea8;
+  --shadow-sm: none;
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --error-bg: rgba(220, 38, 38, 0.15);
+  --error-border: rgba(239, 68, 68, 0.25);
+  --error-text: #f87171;
 
-  --doc-panel-bg: #0f1419;
-  --doc-panel-surface: #161b22;
-  --doc-panel-text: #e5e7eb;
-  --doc-panel-muted: #9ca3af;
-  --doc-panel-border: rgba(255, 255, 255, 0.08);
+  --doc-panel-bg: #191919;
+  --doc-panel-surface: #202020;
+  --doc-panel-text: #e6e6e6;
+  --doc-panel-muted: #9b9b9b;
+  --doc-panel-border: rgba(255, 255, 255, 0.05);
   --doc-panel-hover: rgba(255, 255, 255, 0.04);
-  --doc-toolbar-icon-bg: rgba(255, 255, 255, 0.06);
-  --doc-toolbar-icon-border: rgba(255, 255, 255, 0.14);
-  --doc-toolbar-icon-color: #c4c2e0;
-  --doc-toolbar-icon-primary-start: #4a4c54;
-  --doc-toolbar-icon-primary-end: #303238;
-  --doc-panel-no-folder-label: #9b9daa;
-  --doc-panel-active-bg: rgba(129, 140, 248, 0.16);
-  --doc-panel-active-bar: #818cf8;
+  --doc-panel-active-bg: rgba(255, 255, 255, 0.04);
+  --doc-panel-active-bar: #e6e6e6;
+  --doc-toolbar-icon-bg: #202020;
+  --doc-toolbar-icon-border: rgba(255, 255, 255, 0.08);
+  --doc-toolbar-icon-color: #9b9b9b;
+  --doc-toolbar-icon-primary-start: #e6e6e6;
+  --doc-toolbar-icon-primary-end: #e6e6e6;
+  --doc-panel-no-folder-label: #9b9b9b;
 }
 
 *,
@@ -77,15 +82,16 @@ import AppShell from '@/layouts/AppShell.vue'
 body {
   margin: 0;
   font-family:
-    system-ui,
     -apple-system,
-    'Segoe UI',
-    Roboto,
+    'SF Pro Display',
+    'SF Pro Text',
     'Helvetica Neue',
-    Arial,
+    system-ui,
     sans-serif;
   background: var(--bg);
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #app {
@@ -100,5 +106,12 @@ select,
     background-color 0.12s ease,
     border-color 0.12s ease,
     color 0.12s ease;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 </style>

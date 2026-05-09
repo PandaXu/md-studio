@@ -45,44 +45,39 @@ const emit = defineEmits<{
 .history-group {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 1px;
 }
 
 .history-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2rem;
-  min-height: 2rem;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
   padding: 0.2rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
   background: transparent;
-  color: var(--text);
+  color: var(--muted);
   cursor: pointer;
 }
 
 .history-btn:hover:not(:disabled) {
-  border-color: #1a1a1e;
-  color: #1a1a1e;
+  background: var(--doc-panel-hover);
+  color: var(--text);
 }
 
 .history-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .history-btn:focus-visible {
-  outline: 2px solid var(--accent, #2563eb);
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
-[data-reading='dark'] .history-btn:hover:not(:disabled) {
-  border-color: #d1d5db;
-  color: #f9fafb;
-}
-
-[data-reading='dark'] .history-btn:disabled {
-  opacity: 0.28;
+.history-btn svg {
+  display: block;
 }
 </style>

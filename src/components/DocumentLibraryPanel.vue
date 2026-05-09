@@ -773,7 +773,9 @@ defineExpose({ expandFolder })
         title="清空搜索条件"
         aria-label="清空搜索"
         @click="onClearSearch"
-      >×</button>
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
 
     <template v-if="treeMode">
@@ -814,7 +816,13 @@ defineExpose({ expandFolder })
               :aria-label="isFolderExpanded(row.folder.id) ? '折叠文件夹' : '展开文件夹'"
               @click.stop="toggleFolderExpand(row.folder.id)"
             >
-              {{ isFolderExpanded(row.folder.id) ? '▾' : '▸' }}
+              <svg
+                width="12" height="12" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round"
+                aria-hidden="true"
+                :style="{ transform: isFolderExpanded(row.folder.id) ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }"
+              ><path d="m9 18 6-6-6-6"/></svg>
             </button>
             <span class="doc-panel-folder-icon" aria-hidden="true">
               <FolderOutlineIcon :size="14" />
@@ -841,7 +849,9 @@ defineExpose({ expandFolder })
               @dragleave="onFolderMoveIntoDragLeave($event)"
               @drop="onFolderMoveIntoDrop(row.folder.id, $event)"
             >
-              <span class="doc-panel-folder-move-into-icon" aria-hidden="true">⎆</span>
+              <span class="doc-panel-folder-move-into-icon" aria-hidden="true">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+              </span>
             </span>
             <button
               v-if="renamingFolderId !== row.folder.id"
@@ -854,7 +864,11 @@ defineExpose({ expandFolder })
               aria-haspopup="menu"
               :aria-expanded="ctxMenuOpenForFolder(row.folder.id, 'kebab')"
               @click.stop="openKebabMenuFolder(row.folder)"
-            >⋯</button>
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+              </svg>
+            </button>
             <ul
               v-if="ctxMenuOpenForFolder(row.folder.id, 'kebab')"
               ref="ctxMenuEl"
@@ -864,37 +878,44 @@ defineExpose({ expandFolder })
             >
               <li role="none">
                 <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxNewDocInFolder">
-                  <span class="doc-panel-ctx-ico" aria-hidden="true">📄</span>新建文档
+                  <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                  新建文档
                 </button>
               </li>
               <li role="none">
                 <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxNewSubfolder">
-                  <span class="doc-panel-ctx-ico" aria-hidden="true">📁</span>新建子文件夹
+                  <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                  新建子文件夹
                 </button>
               </li>
               <li role="none">
                 <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderImportMd">
-                  <span class="doc-panel-ctx-ico" aria-hidden="true">⬆</span>上传 Markdown…
+                  <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  上传 Markdown…
                 </button>
               </li>
               <li role="none">
                 <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderImportFolder">
-                  <span class="doc-panel-ctx-ico" aria-hidden="true">⬆</span>上传文件夹…
+                  <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="12 11 12 17"/><polyline points="9 14 15 14"/></svg>
+                  上传文件夹…
                 </button>
               </li>
               <li role="none">
                 <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderDownloadZip">
-                  <span class="doc-panel-ctx-ico" aria-hidden="true">⬇</span>下载为 ZIP
+                  <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  下载为 ZIP
                 </button>
               </li>
               <li role="none">
                 <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxRenameFolder">
-                  <span class="doc-panel-ctx-ico" aria-hidden="true">✎</span>重命名
+                  <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                  重命名
                 </button>
               </li>
               <li role="none">
                 <button type="button" role="menuitem" class="doc-panel-ctx-item danger" @click="onCtxDeleteFolder">
-                  <span class="doc-panel-ctx-ico" aria-hidden="true">🗑</span>删除文件夹
+                  <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  删除文件夹
                 </button>
               </li>
             </ul>
@@ -952,7 +973,11 @@ defineExpose({ expandFolder })
                 aria-haspopup="menu"
                 :aria-expanded="ctxMenuOpenForDoc(row.doc.id, 'kebab')"
                 @click.stop="openKebabMenuDoc(row.doc)"
-              >⋯</button>
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+                </svg>
+              </button>
 
               <ul
                 v-if="ctxMenuOpenForDoc(row.doc.id, 'kebab')"
@@ -1028,7 +1053,11 @@ defineExpose({ expandFolder })
             aria-haspopup="menu"
             :aria-expanded="ctxMenuOpenForDoc(doc.id, 'kebab')"
             @click.stop="openKebabMenuDoc(doc)"
-          >⋯</button>
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+            </svg>
+          </button>
 
           <ul
             v-if="ctxMenuOpenForDoc(doc.id, 'kebab')"
@@ -1038,7 +1067,10 @@ defineExpose({ expandFolder })
             @click.self="closeContextMenu"
           >
             <li role="none">
-              <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxRenameDoc">重命名</button>
+              <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxRenameDoc">
+                <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                重命名
+              </button>
             </li>
             <li role="none">
               <button
@@ -1047,16 +1079,28 @@ defineExpose({ expandFolder })
                 class="doc-panel-ctx-item"
                 :disabled="!ctxLockedOnly"
                 @click="onCtxUnlock"
-              >恢复跟随 H1</button>
+              >
+                <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                恢复跟随 H1
+              </button>
             </li>
             <li role="none">
-              <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDownload">下载</button>
+              <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDownload">
+                <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                下载
+              </button>
             </li>
             <li role="none">
-              <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDuplicate">复制一份</button>
+              <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDuplicate">
+                <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                复制一份
+              </button>
             </li>
             <li role="none">
-              <button type="button" role="menuitem" class="doc-panel-ctx-item danger" @click="onCtxDeleteDoc">删除</button>
+              <button type="button" role="menuitem" class="doc-panel-ctx-item danger" @click="onCtxDeleteDoc">
+                <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                删除
+              </button>
             </li>
           </ul>
         </template>
@@ -1081,7 +1125,10 @@ defineExpose({ expandFolder })
       >
         <template v-if="ctxMenu.target.kind === 'doc'">
           <li role="none">
-            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxRenameDoc">重命名</button>
+            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxRenameDoc">
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              重命名
+            </button>
           </li>
           <li role="none">
             <button
@@ -1090,52 +1137,71 @@ defineExpose({ expandFolder })
               class="doc-panel-ctx-item"
               :disabled="!ctxLockedOnly"
               @click="onCtxUnlock"
-            >恢复跟随 H1</button>
+            >
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              恢复跟随 H1
+            </button>
           </li>
           <li role="none">
-            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDownload">下载</button>
+            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDownload">
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              下载
+            </button>
           </li>
           <li role="none">
-            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDuplicate">复制一份</button>
+            <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxDuplicate">
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              复制一份
+            </button>
           </li>
           <li role="none">
-            <button type="button" role="menuitem" class="doc-panel-ctx-item danger" @click="onCtxDeleteDoc">删除</button>
+            <button type="button" role="menuitem" class="doc-panel-ctx-item danger" @click="onCtxDeleteDoc">
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              删除
+            </button>
           </li>
         </template>
         <template v-else>
           <li role="none">
             <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxNewDocInFolder">
-              <span class="doc-panel-ctx-ico" aria-hidden="true">📄</span>新建文档
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              新建文档
             </button>
           </li>
           <li role="none">
             <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxNewSubfolder">
-              <span class="doc-panel-ctx-ico" aria-hidden="true">📁</span>新建子文件夹
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+              新建子文件夹
             </button>
           </li>
           <li role="none">
             <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderImportMd">
-              <span class="doc-panel-ctx-ico" aria-hidden="true">⬆</span>上传 Markdown…
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              上传 Markdown…
             </button>
           </li>
           <li role="none">
             <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderImportFolder">
-              <span class="doc-panel-ctx-ico" aria-hidden="true">⬆</span>上传文件夹…
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="12 11 12 17"/><polyline points="9 14 15 14"/></svg>
+              上传文件夹…
             </button>
           </li>
           <li role="none">
             <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxFolderDownloadZip">
-              <span class="doc-panel-ctx-ico" aria-hidden="true">⬇</span>下载为 ZIP
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              下载为 ZIP
             </button>
           </li>
           <li role="none">
             <button type="button" role="menuitem" class="doc-panel-ctx-item" @click="onCtxRenameFolder">
-              <span class="doc-panel-ctx-ico" aria-hidden="true">✎</span>重命名
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              重命名
             </button>
           </li>
           <li role="none">
             <button type="button" role="menuitem" class="doc-panel-ctx-item danger" @click="onCtxDeleteFolder">
-              <span class="doc-panel-ctx-ico" aria-hidden="true">🗑</span>删除文件夹
+              <svg class="doc-panel-ctx-ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              删除文件夹
             </button>
           </li>
         </template>
@@ -1197,7 +1263,7 @@ defineExpose({ expandFolder })
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 0.5rem 0.65rem;
+  padding: 0.4rem 0.5rem;
   background: transparent;
 }
 
@@ -1206,7 +1272,7 @@ defineExpose({ expandFolder })
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-start;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   min-width: 0;
   overflow-x: auto;
@@ -1226,12 +1292,12 @@ defineExpose({ expandFolder })
   font: inherit;
   margin: 0;
   padding: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--doc-toolbar-icon-border, rgb(213, 212, 226));
-  background: var(--doc-toolbar-icon-bg, rgba(0, 0, 0, 0.03));
-  color: var(--doc-toolbar-icon-color, rgb(85, 82, 122));
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--doc-toolbar-icon-color);
   cursor: pointer;
   line-height: 0;
   display: flex;
@@ -1241,7 +1307,8 @@ defineExpose({ expandFolder })
 }
 
 .doc-toolbar-icon-btn:hover:not(:disabled) {
-  filter: brightness(0.97);
+  background: var(--doc-panel-hover);
+  color: var(--doc-panel-text);
 }
 
 .doc-toolbar-icon-btn:disabled {
@@ -1250,62 +1317,75 @@ defineExpose({ expandFolder })
 }
 
 .doc-toolbar-icon-btn--primary {
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  background: linear-gradient(
-    135deg,
-    var(--doc-toolbar-icon-primary-start, #3a3a42),
-    var(--doc-toolbar-icon-primary-end, #232326)
-  );
-  color: #f4f4f5;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--doc-panel-text);
 }
 
 .doc-toolbar-icon-btn--primary:hover:not(:disabled) {
-  filter: brightness(1.07);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 [data-reading='dark'] .doc-toolbar-icon-btn--primary {
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-reading='dark'] .doc-toolbar-icon-btn--primary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .doc-panel-search {
   position: relative;
-  padding: 0.4rem 0.55rem;
+  padding: 0.3rem 0.45rem;
 }
 
 .doc-panel-search-input {
   width: 100%;
   font: inherit;
   font-size: 0.8125rem;
-  padding: 0.35rem 1.6rem 0.35rem 0.25rem;
-  border: none;
-  border-bottom: 1px solid var(--doc-panel-border);
-  border-radius: 0;
-  background: transparent;
+  padding: 0.3rem 1.4rem 0.3rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--doc-panel-hover);
   color: var(--doc-panel-text);
   box-sizing: border-box;
-  transition: border-color 0.15s ease;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.doc-panel-search-input::placeholder {
+  color: var(--doc-panel-muted);
 }
 
 .doc-panel-search-input:focus {
   outline: none;
-  border-bottom-color: var(--doc-panel-active-bar);
+  background: var(--doc-panel-surface);
+  border-color: var(--accent);
 }
 
 .doc-panel-search-clear {
   position: absolute;
   top: 50%;
-  right: 0.85rem;
+  right: 0.6rem;
   transform: translateY(-50%);
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 1rem;
   color: var(--doc-panel-muted);
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.doc-panel-search-clear:hover {
+  background: var(--doc-panel-hover);
+  color: var(--doc-panel-text);
 }
 
 .doc-panel-list {
   margin: 0;
-  padding: 0.25rem 0;
+  padding: 0.2rem 0;
   list-style: none;
   overflow: auto;
   flex: 1 1 auto;
@@ -1321,11 +1401,12 @@ defineExpose({ expandFolder })
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.2rem 0.35rem;
-  padding: 0.4rem 0.55rem 0.4rem 0.85rem;
+  gap: 0.15rem 0.25rem;
+  padding: 0.25rem 0.4rem 0.25rem 0.65rem;
   cursor: pointer;
-  border-left: 2px solid transparent;
-  min-height: 2rem;
+  min-height: 1.85rem;
+  font-size: 0.85rem;
+  color: var(--doc-panel-text);
 }
 
 .doc-panel-folder:hover {
@@ -1337,13 +1418,9 @@ defineExpose({ expandFolder })
 }
 
 .doc-panel-folder.doc-panel-drag-over {
-  background: rgba(99, 102, 241, 0.12);
-  outline: 1px dashed var(--doc-panel-active-bar);
+  background: var(--doc-panel-hover);
+  outline: 1px solid var(--doc-panel-active-bar);
   outline-offset: -1px;
-}
-
-[data-reading='dark'] .doc-panel-folder.doc-panel-drag-over {
-  background: rgba(129, 140, 248, 0.14);
 }
 
 .doc-panel-folder-chevron {
@@ -1353,10 +1430,8 @@ defineExpose({ expandFolder })
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.65rem;
-  line-height: 1;
   border: none;
-  border-radius: 4px;
+  border-radius: 3px;
   background: transparent;
   color: var(--doc-panel-muted);
   cursor: pointer;
@@ -1368,13 +1443,17 @@ defineExpose({ expandFolder })
   color: var(--doc-panel-text);
 }
 
+.doc-panel-folder-chevron svg {
+  display: block;
+}
+
 .doc-panel-folder-icon {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--doc-panel-muted);
-  opacity: 0.95;
+  opacity: 0.7;
 }
 
 .doc-toolbar-icon-inner {
@@ -1385,8 +1464,8 @@ defineExpose({ expandFolder })
 .doc-panel-folder-title {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.85rem;
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1394,55 +1473,50 @@ defineExpose({ expandFolder })
 
 .doc-panel-folder-move-into {
   flex: 0 0 auto;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .doc-panel-folder-move-into--lead {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  gap: 0.2rem;
+  gap: 0.15rem;
 }
 
 .doc-panel-folder-move-into--tail {
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 1.25rem;
+  height: 1.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--doc-panel-muted);
-  font-size: 0.75rem;
+  opacity: 0.5;
   cursor: default;
   user-select: none;
+  border-radius: 3px;
 }
 
 .doc-panel-folder-move-into--tail:hover {
   background: var(--doc-panel-hover);
-  color: var(--doc-panel-text);
+  opacity: 1;
 }
 
 .doc-panel-folder-move-into-icon {
   line-height: 1;
-  opacity: 0.75;
 }
 
 .doc-panel-folder-rename {
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
-  margin-top: 0;
-  grid-column: unset;
-  grid-row: unset;
-  display: block;
 }
 
 .doc-panel-folder-empty {
   list-style: none;
   font-size: 0.78rem;
   color: var(--doc-panel-muted);
-  padding: 0.15rem 0.55rem 0.35rem;
+  padding: 0.1rem 0.55rem 0.3rem;
   margin: 0;
-  border-left: 2px solid transparent;
 }
 
 .doc-panel-no-folder-divider {
@@ -1450,9 +1524,8 @@ defineExpose({ expandFolder })
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.5rem 0.55rem 0.35rem;
+  padding: 0.4rem 0.4rem 0.2rem;
   margin: 0;
-  border-left: 2px solid transparent;
   user-select: none;
 }
 
@@ -1460,29 +1533,20 @@ defineExpose({ expandFolder })
   flex: 1 1 auto;
   min-width: 0.5rem;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--doc-panel-border) 12%,
-    var(--doc-panel-border) 88%,
-    transparent
-  );
-  opacity: 0.95;
+  background: var(--doc-panel-border);
+  opacity: 0.8;
 }
 
 .doc-panel-no-folder-label {
   flex: 0 0 auto;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--doc-panel-no-folder-label, #2a2a30);
-  opacity: 0.9;
-  text-transform: none;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--doc-panel-no-folder-label);
 }
 
 .doc-panel-no-folder-divider.doc-panel-drag-over {
-  background: rgba(99, 102, 241, 0.08);
-  border-radius: 4px;
+  background: var(--doc-panel-hover);
+  border-radius: 3px;
 }
 
 .doc-panel-no-folder-divider.doc-panel-drag-over .doc-panel-no-folder-label {
@@ -1502,10 +1566,9 @@ defineExpose({ expandFolder })
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-rows: auto auto;
-  column-gap: 0.4rem;
-  padding: 0.5rem 0.55rem 0.5rem 0.85rem;
+  column-gap: 0.3rem;
+  padding: 0.3rem 0.4rem 0.3rem 0.65rem;
   cursor: pointer;
-  border-left: 2px solid transparent;
 }
 
 .doc-panel-item--nested {
@@ -1518,25 +1581,24 @@ defineExpose({ expandFolder })
 
 .doc-panel-item.active {
   background: var(--doc-panel-active-bg);
-  border-left-color: var(--doc-panel-active-bar);
 }
 
 .doc-panel-item-title {
   grid-column: 1;
   grid-row: 1;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.85rem;
+  font-weight: 400;
   color: var(--doc-panel-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .doc-panel-item-meta {
   grid-column: 1;
   grid-row: 2;
-  margin-top: 0.1rem;
+  margin-top: 0.05rem;
   font-size: 0.7rem;
   color: var(--doc-panel-muted);
   line-height: 1.2;
@@ -1552,22 +1614,25 @@ defineExpose({ expandFolder })
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font: inherit;
-  font-size: 1rem;
-  line-height: 1;
   border: none;
-  border-radius: 4px;
+  border-radius: 3px;
   background: transparent;
   color: var(--doc-panel-muted);
   cursor: pointer;
-  opacity: 0.35;
+  opacity: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.doc-panel-kebab svg {
+  display: block;
 }
 
 .doc-panel-kebab--folder {
   grid-column: unset;
   grid-row: unset;
   margin-left: auto;
-  opacity: 0.35;
+  opacity: 0;
 }
 
 .doc-panel-folder:hover .doc-panel-kebab--folder,
@@ -1591,16 +1656,16 @@ defineExpose({ expandFolder })
   width: 100%;
   font: inherit;
   font-size: 0.85rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  border: 1px solid var(--doc-panel-active-bar);
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+  border: 1px solid var(--accent);
   background: var(--doc-panel-surface);
   color: var(--doc-panel-text);
   box-sizing: border-box;
 }
 
 .doc-panel-empty-list {
-  margin: 0.85rem 0.65rem;
+  margin: 0.75rem 0.55rem;
   font-size: 0.8125rem;
   color: var(--doc-panel-muted);
   text-align: center;
@@ -1611,24 +1676,24 @@ defineExpose({ expandFolder })
   margin: 0;
   padding: 0.25rem 0;
   list-style: none;
-  min-width: 10.5rem;
+  min-width: 10rem;
   background: var(--doc-panel-surface);
   border: 1px solid var(--doc-panel-border);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
   z-index: 60;
 }
 
 .doc-panel-ctx-menu--kebab {
   position: absolute;
-  top: calc(100% - 4px);
-  right: 6px;
+  top: calc(100% - 2px);
+  right: 4px;
   left: auto;
 }
 
 .doc-panel-folder .doc-panel-ctx-menu--kebab {
   top: calc(100% - 2px);
-  right: 4px;
+  right: 2px;
 }
 
 .doc-panel-ctx-item {
@@ -1636,7 +1701,7 @@ defineExpose({ expandFolder })
   text-align: left;
   font: inherit;
   font-size: 0.8125rem;
-  padding: 0.4rem 0.85rem;
+  padding: 0.35rem 0.75rem;
   border: none;
   background: transparent;
   color: var(--doc-panel-text);
@@ -1649,7 +1714,12 @@ defineExpose({ expandFolder })
 .doc-panel-ctx-ico {
   flex: 0 0 auto;
   font-size: 0.85rem;
-  opacity: 0.85;
+}
+
+.doc-panel-ctx-ico-svg {
+  flex: 0 0 auto;
+  opacity: 0.6;
+  flex-shrink: 0;
 }
 
 .doc-panel-ctx-item:hover:not(:disabled) {
@@ -1662,7 +1732,7 @@ defineExpose({ expandFolder })
 }
 
 .doc-panel-ctx-item.danger {
-  color: #dc2626;
+  color: #e5484d;
 }
 
 [data-reading='dark'] .doc-panel-ctx-item.danger {
@@ -1672,58 +1742,65 @@ defineExpose({ expandFolder })
 .doc-new-folder-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 18, 28, 0.45);
+  background: rgba(0, 0, 0, 0.3);
   display: grid;
   place-items: center;
   z-index: 110;
 }
 
 .doc-new-folder-dialog {
-  width: min(400px, calc(100vw - 2rem));
+  width: min(380px, calc(100vw - 2rem));
   padding: 1rem 1.1rem;
-  border-radius: 10px;
-  background: var(--doc-panel-surface, #fff);
-  border: 1px solid var(--doc-panel-border, #e5e7eb);
-  color: var(--doc-panel-text, #1f2937);
+  border-radius: 6px;
+  background: var(--doc-panel-surface);
+  border: 1px solid var(--doc-panel-border);
+  color: var(--doc-panel-text);
+  box-shadow: var(--shadow-lg);
 }
 
 .doc-new-folder-title {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .doc-new-folder-label {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.3rem;
   font-size: 0.8125rem;
 }
 
 .doc-new-folder-label-text {
-  color: var(--doc-panel-muted, #6b7280);
+  color: var(--doc-panel-muted);
 }
 
 .doc-new-folder-input {
   font: inherit;
   font-size: 0.9rem;
-  padding: 0.45rem 0.55rem;
-  border-radius: 6px;
-  border: 1px solid var(--doc-panel-border, #e5e7eb);
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--doc-panel-border);
   width: 100%;
   box-sizing: border-box;
-  background: var(--doc-panel-bg, #fafbfc);
-  color: var(--doc-panel-text, #1f2937);
+  background: var(--doc-panel-surface);
+  color: var(--doc-panel-text);
+}
+
+.doc-new-folder-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .doc-new-folder-err {
-  margin: 0.5rem 0 0;
+  margin: 0.4rem 0 0;
   font-size: 0.8125rem;
-  color: #b45309;
+  color: var(--error-text);
 }
 
 .doc-new-folder-actions {
-  margin-top: 0.85rem;
+  margin-top: 0.75rem;
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 </style>
