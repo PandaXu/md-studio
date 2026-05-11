@@ -35,7 +35,7 @@ import AppShell from '@/layouts/AppShell.vue'
   --doc-panel-active-bar: #37352f;
   --doc-toolbar-icon-bg: #ffffff;
   --doc-toolbar-icon-border: rgba(0, 0, 0, 0.08);
-  --doc-toolbar-icon-color: #6b6b67;
+  --doc-toolbar-icon-color: #555555;
   --doc-toolbar-icon-primary-start: #37352f;
   --doc-toolbar-icon-primary-end: #37352f;
   --doc-panel-no-folder-label: #9b9a97;
@@ -67,7 +67,7 @@ import AppShell from '@/layouts/AppShell.vue'
   --doc-panel-active-bar: #e6e6e6;
   --doc-toolbar-icon-bg: #202020;
   --doc-toolbar-icon-border: rgba(255, 255, 255, 0.08);
-  --doc-toolbar-icon-color: #9b9b9b;
+  --doc-toolbar-icon-color: #999999;
   --doc-toolbar-icon-primary-start: #e6e6e6;
   --doc-toolbar-icon-primary-end: #e6e6e6;
   --doc-panel-no-folder-label: #9b9b9b;
