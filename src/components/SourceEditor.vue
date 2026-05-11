@@ -76,6 +76,13 @@ onBeforeUnmount(() => {
   editor?.dispose()
   editor = null
 })
+
+defineExpose({
+  /** 获取 Monaco 编辑器实例，用于滚动同步等高级操作 */
+  getEditor() {
+    return editor
+  },
+})
 </script>
 
 <template>

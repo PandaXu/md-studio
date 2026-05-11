@@ -11,6 +11,7 @@ import { useAppReading } from '@/composables/useAppReading'
 import { useDocumentLibrary, type LibraryReorderPayload } from '@/composables/useDocumentLibrary'
 import { useLocalWorkspace } from '@/composables/useLocalWorkspace'
 import { useTextEditHistory } from '@/composables/useTextEditHistory'
+import { useScrollSync } from '@/composables/useScrollSync'
 import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
 import { sanitizeMarkdownHtml } from '@/markdown/sanitize'
@@ -271,6 +272,12 @@ const docLibraryPanelRef = ref<{ expandFolder?: (id: string) => void } | null>(n
 
 const debouncedSource = ref<string>(currentActiveContent.value)
 const previewHost = ref<HTMLElement | null>(null)
+const previewScrollEl = ref<HTMLElement | null>(null)
+const editorPaneEl = ref<HTMLElement | null>(null)
+
+// 滚动同步：仅左右并列视图启用
+const isScrollSyncActive = computed(() => layout.value === 'split')
+const scrollSync = useScrollSync(editorPaneEl, previewScrollEl, isScrollSyncActive)
 
 const topError = ref<string | null>(null)
 const importBanner = ref<string | null>(null)
@@ -374,7 +381,10 @@ async function runMarkdownPipeline() {
 watch(debouncedSource, runMarkdownPipeline, { flush: 'post' })
 watch(layout, (mode) => {
   persistLayout(mode)
-  void nextTick(() => { window.dispatchEvent(new Event('resize')) })
+  void nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+    scrollSync.reconnect()
+  })
 })
 watch(editMode, persistEditMode)
 watch(sidebarCollapsed, persistSidebarCollapsed)
@@ -388,6 +398,7 @@ onMounted(() => {
   void runMarkdownPipeline()
   window.addEventListener('resize', onWindowResizeDocSidebar)
   onWindowResizeDocSidebar()
+  void nextTick(() => { scrollSync.connect() })
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onWindowResizeDocSidebar)
@@ -772,7 +783,7 @@ async function onDuplicate(id: string) {
       </header>
 
       <main v-if="currentHasContent" class="main" :class="`layout-${layout}`">
-        <section v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
+        <section ref="editorPaneEl" v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
           <h2 class="pane-title">源码</h2>
           <div class="pane-body">
             <SourceEditor
@@ -793,7 +804,7 @@ async function onDuplicate(id: string) {
         <section v-show="layout !== 'code'" class="pane preview-pane" aria-label="预览">
           <h2 class="pane-title">预览</h2>
           <div v-if="topError" class="error-banner" role="alert">{{ topError }}</div>
-          <div class="pane-body preview-scroll" @dblclick="onPreviewDblClick">
+          <div ref="previewScrollEl" class="pane-body preview-scroll" @dblclick="onPreviewDblClick">
             <div class="markdown-preview-wrap">
               <div ref="previewHost" class="markdown-body" />
             </div>

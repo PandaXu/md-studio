@@ -100,6 +100,4 @@ npm run electron:dev
 - **IndexedDB**：文档与文件夹持久化（`src/markdown/documentStore.ts`）；导入 ZIP 使用 `fflate`；目录上传通过 `webkitdirectory` 解析路径（`src/markdown/directoryMdImport.ts`）。
 - **Electron 桌面包**：`vite` 使用 `base: './'` 以便 `file://` 加载资源；在 `file:` 协议下路由自动为 **hash 模式**（地址形如 `#/markdown`），与浏览器内访问的 history 模式并存。
 
-## 浏览器
 
-目标为当前主流的桌面浏览器（Chrome / Edge / Firefox / Safari）最新两个大版本；未在 CI 中做矩阵测试。

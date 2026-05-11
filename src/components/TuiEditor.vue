@@ -205,6 +205,13 @@ onBeforeUnmount(() => {
   editor?.destroy()
   editor = null
 })
+
+defineExpose({
+  /** 获取 Toast UI 编辑器实例，用于滚动同步等高级操作 */
+  getEditor() {
+    return editor
+  },
+})
 </script>
 
 <template>
