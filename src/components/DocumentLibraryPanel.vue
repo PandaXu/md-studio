@@ -53,6 +53,7 @@ const emit = defineEmits<{
   newFolder: [parentId: string | null, title: string]
   'update:fileMode': [value: 'local' | 'web']
   selectLocalFolder: []
+  closeLocalWorkspace: []
 }>()
 
 const isLocalMode = computed(() => props.fileMode === 'local')
@@ -1261,6 +1262,7 @@ defineExpose({ expandFolder })
       :is-electron="isElectron"
       @update:model-value="(v: 'local' | 'web') => emit('update:fileMode', v)"
       @select-folder="emit('selectLocalFolder')"
+      @close-workspace="emit('closeLocalWorkspace')"
     />
   </aside>
 </template>

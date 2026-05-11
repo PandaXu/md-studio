@@ -3,12 +3,6 @@ import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
 // FileNode 类型在 env.d.ts 中全局声明，此处直接使用
 
 // 简易 path 工具（避免依赖 Node path 模块，浏览器/Electron 渲染进程通用）
-function joinPath(...segs: string[]): string {
-  return segs
-    .map((s) => s.replace(/\/+$/, '').replace(/^\/+/, ''))
-    .filter(Boolean)
-    .join('/')
-}
 function dirname(p: string): string {
   const i = p.lastIndexOf('/')
   return i === -1 ? '.' : p.slice(0, i)
@@ -84,6 +78,7 @@ export type LocalWorkspaceHandle = {
   treeMode: ComputedRef<boolean>
   hasWorkspace: ComputedRef<boolean>
   openFolder(): Promise<void>
+  closeWorkspace(): Promise<void>
   refreshTree(): Promise<void>
   setActive(id: string): Promise<void>
   createDoc(parentPath: string | null): Promise<void>
@@ -134,6 +129,16 @@ export function useLocalWorkspace(): LocalWorkspaceHandle {
     await refreshTree()
   }
 
+  async function closeWorkspace() {
+    await flush()
+    workspacePath.value = null
+    docs.value = []
+    folders.value = []
+    activeId.value = null
+    activeContent.value = ''
+    dirty = false
+  }
+
   async function refreshTree() {
     if (!api || !workspacePath.value) return
     const nodes = await api.scanFolder(workspacePath.value)
@@ -150,7 +155,7 @@ export function useLocalWorkspace(): LocalWorkspaceHandle {
     const doc = docs.value.find((d) => d.id === id)
     if (!doc) return
     activeId.value = id
-    activeContent.value = await api.readFile(joinPath(workspacePath.value, id))
+    activeContent.value = await api.readFile(id)
     dirty = false
   }
 
@@ -261,7 +266,7 @@ export function useLocalWorkspace(): LocalWorkspaceHandle {
       unsubscribeFileWatch = api.onFileChanged((_event) => {
         refreshTree().then(() => {
           if (activeId.value && !dirty && docs.value.some((d) => d.id === activeId.value)) {
-            api.readFile(joinPath(workspacePath.value!, activeId.value)).then((content) => {
+            api.readFile(activeId.value).then((content) => {
               activeContent.value = content
             })
           }
@@ -282,6 +287,7 @@ export function useLocalWorkspace(): LocalWorkspaceHandle {
     treeMode,
     hasWorkspace,
     openFolder,
+    closeWorkspace,
     refreshTree,
     setActive,
     createDoc,

@@ -627,6 +627,7 @@ async function onDuplicate(id: string) {
         :download-active-disabled="!currentActiveId"
         @update:file-mode="switchFileMode"
         @select-local-folder="onSelectLocalFolder"
+        @close-local-workspace="(async () => { await localWs.closeWorkspace() })()"
         @select="(id: string) => fileMode === 'local' ? localWs.setActive(id) : onSelect(id)"
         @rename="(id: string, t: string) => fileMode === 'local' ? onLocalRename(id, t) : onRename(id, t)"
         @unlock-title="onUnlock"

@@ -8,6 +8,7 @@ defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: 'local' | 'web']
   selectFolder: []
+  closeWorkspace: []
 }>()
 
 function switchTo(value: 'local' | 'web') {
@@ -22,6 +23,17 @@ function switchTo(value: 'local' | 'web') {
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
       </svg>
       <span class="file-mode-workspace-name">{{ workspacePath.split('/').pop() || workspacePath }}</span>
+      <button
+        type="button"
+        class="file-mode-workspace-close"
+        title="关闭工作区"
+        aria-label="关闭工作区"
+        @click="emit('closeWorkspace')"
+      >
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
     </div>
     <button
       v-if="modelValue === 'local' && !workspacePath"
@@ -93,6 +105,28 @@ function switchTo(value: 'local' | 'web') {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+.file-mode-workspace-close {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--doc-panel-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 0;
+}
+
+.file-mode-workspace-close:hover {
+  background: var(--doc-panel-hover);
+  color: var(--doc-panel-text);
 }
 
 .file-mode-open-btn {
