@@ -22,8 +22,8 @@ export function fileNodeToDoc(node: FileNode): Doc {
     title,
     titleLocked: true,
     content: '',
-    createdAt: 0,
-    updatedAt: 0,
+    createdAt: node.birthtimeMs ?? node.mtimeMs ?? 0,
+    updatedAt: node.mtimeMs ?? node.birthtimeMs ?? 0,
   }
 }
 

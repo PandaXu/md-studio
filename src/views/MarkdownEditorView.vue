@@ -188,6 +188,19 @@ const currentActiveContent = computed({
   },
 })
 
+const currentActiveDocTitle = computed(() => {
+  if (fileMode.value === 'local') {
+    const doc = localWs.docs.value.find((d: any) => d.id === localWs.activeId.value)
+    return doc?.title ?? null
+  }
+  return activeDoc.value?.title ?? null
+})
+
+const currentHasContent = computed(() => {
+  if (fileMode.value === 'local') return localWs.hasItems.value
+  return hasDocs.value
+})
+
 // Mode switching
 function switchFileMode(next: 'local' | 'web') {
   if (next === fileMode.value) return
@@ -668,8 +681,8 @@ async function onDuplicate(id: string) {
             <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
-        <h1 class="doc-title" :class="{ muted: !activeDoc }">
-          {{ activeDoc?.title ?? '未选中文档' }}
+        <h1 class="doc-title" :class="{ muted: !currentActiveDocTitle }">
+          {{ currentActiveDocTitle ?? '未选中文档' }}
         </h1>
         <div v-if="layout === 'code'" class="theme-group" role="group" aria-label="编辑模式">
           <span class="theme-label">编辑模式</span>
@@ -680,7 +693,7 @@ async function onDuplicate(id: string) {
         </div>
         <div class="toolbar-actions">
           <EditorHistoryButtons
-            v-if="hasDocs"
+            v-if="currentHasContent"
             :can-undo="canUndoEdit"
             :can-redo="canRedoEdit"
             @undo="onMarkdownHistoryUndo"
@@ -693,7 +706,7 @@ async function onDuplicate(id: string) {
             </select>
           </label>
           <button type="button" class="ghost-btn" @click="exportHtml">下载 HTML</button>
-          <button type="button" class="ghost-btn" @click="onLoadSample">载入示例</button>
+          <button v-if="fileMode === 'web'" type="button" class="ghost-btn" @click="onLoadSample">载入示例</button>
         </div>
         <div
           class="theme-group theme-group--reading-end"
@@ -757,7 +770,7 @@ async function onDuplicate(id: string) {
         </div>
       </header>
 
-      <main v-if="hasDocs" class="main" :class="`layout-${layout}`">
+      <main v-if="currentHasContent" class="main" :class="`layout-${layout}`">
         <section v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
           <h2 class="pane-title">源码</h2>
           <div class="pane-body">
@@ -769,7 +782,7 @@ async function onDuplicate(id: string) {
             />
             <TuiEditor
               v-else-if="layout === 'code'"
-              :key="activeId ?? 'no-doc'"
+              :key="(currentActiveId ?? 'no-doc') + '-' + fileMode"
               v-model="currentActiveContent"
               :chart-theme="MARKDOWN_MERMAID_THEME"
               :reading="reading"
@@ -787,8 +800,21 @@ async function onDuplicate(id: string) {
         </section>
       </main>
 
-      <section v-else-if="status === 'loading'" class="doc-empty-state" aria-label="加载中">
+      <section v-else-if="status === 'loading' && fileMode === 'web'" class="doc-empty-state" aria-label="加载中">
         <p>加载文档库…</p>
+      </section>
+
+      <section v-else-if="fileMode === 'local' && !localWs.hasWorkspace.value" class="doc-empty-state" aria-label="本地模式">
+        <h2>本地文件模式</h2>
+        <p>打开本地文件夹，直接编辑和预览 Markdown 文件。</p>
+      </section>
+
+      <section v-else-if="fileMode === 'local' && localWs.hasWorkspace.value" class="doc-empty-state" aria-label="空文件夹">
+        <h2>{{ localWs.workspacePath.value?.split('/').pop() ?? '文件夹' }} 中没有 Markdown 文件</h2>
+        <p>点击工具栏 ＋ 新建文档，或在 Finder 中添加 .md 文件。</p>
+        <div class="doc-empty-actions">
+          <button type="button" class="primary-btn" @click="onLocalNewDoc()">新建空文档</button>
+        </div>
       </section>
 
       <section v-else class="doc-empty-state" aria-label="空文档库">

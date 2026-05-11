@@ -34,7 +34,14 @@ function scanDir(dirPath) {
       const children = scanDir(full)
       result.push({ name: entry.name, path: rel, kind: 'dir', children })
     } else if (entry.isFile() && /\.md$/i.test(entry.name)) {
-      result.push({ name: entry.name, path: rel, kind: 'file' })
+      const stat = fs.statSync(full)
+      result.push({
+        name: entry.name,
+        path: rel,
+        kind: 'file',
+        mtimeMs: stat.mtimeMs,
+        birthtimeMs: stat.birthtimeMs,
+      })
     }
   }
   return result

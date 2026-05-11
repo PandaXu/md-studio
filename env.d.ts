@@ -24,6 +24,8 @@ type FileNode = {
   path: string
   kind: 'file' | 'dir'
   children?: FileNode[]
+  mtimeMs?: number
+  birthtimeMs?: number
 }
 
 interface ElectronFileAPI {
