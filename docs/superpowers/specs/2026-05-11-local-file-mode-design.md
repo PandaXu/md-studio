@@ -65,6 +65,11 @@ interface ElectronFileAPI {
   scanFolder(folderPath: string): Promise<FileNode[]>  // 递归扫描 md 文件
   readFile(filePath: string): Promise<string>           // 读取文件内容
   writeFile(filePath: string, content: string): Promise<void>  // 写入文件
+  createFile(parentPath: string, name: string): Promise<string>  // 新建空 .md 文件，返回完整路径
+  createFolder(parentPath: string, name: string): Promise<string>  // 新建文件夹，返回完整路径
+  deleteFile(filePath: string): Promise<void>            // 删除文件
+  deleteFolder(folderPath: string): Promise<void>        // 递归删除文件夹
+  rename(oldPath: string, newPath: string): Promise<void>  // 重命名文件/文件夹
   onFileChanged(callback: (event: { path: string; type: 'change' | 'rename' | 'delete' }) => void): () => void  // 监听文件变更，返回取消订阅函数
 }
 ```
@@ -77,6 +82,11 @@ interface ElectronFileAPI {
 | `fs:scan-folder` | Renderer → Main | 扫描指定目录下的 md 文件树 |
 | `fs:read-file` | Renderer → Main | 读取单个文件内容 |
 | `fs:write-file` | Renderer → Main | 写入单个文件 |
+| `fs:create-file` | Renderer → Main | 新建空 .md 文件 |
+| `fs:create-folder` | Renderer → Main | 新建文件夹 |
+| `fs:delete-file` | Renderer → Main | 删除文件 |
+| `fs:delete-folder` | Renderer → Main | 递归删除文件夹 |
+| `fs:rename` | Renderer → Main | 重命名文件/文件夹 |
 | `fs:watch-start` | Renderer → Main | 开始监听文件夹变更 |
 | `fs:watch-stop` | Renderer → Main | 停止监听 |
 | `fs:file-changed` | Main → Renderer | 文件变更事件通知 |
@@ -96,7 +106,10 @@ DocumentLibraryPanel 目前接收 `docs: Doc[]` 和 `folders: FolderRecord[]` pr
 
 - `FileNode.kind === 'dir'` → 映射为 `FolderRecord`（生成临时 id = 路径）
 - `FileNode.kind === 'file'` → 映射为 `Doc`（id = 路径，title = 文件名去 .md，content 惰性加载）
-- 面板的"新建文档"等按钮在本地模式下隐藏（通过新增 prop `readonly: boolean` 控制）
+- 面板的"新建文档""新建文件夹"按钮在本地模式下同样可用，操作通过 IPC 对应到文件系统
+- 面板的右键菜单"重命名""删除"在本地模式下对文件/文件夹可用
+- 面板的"导入""导出""下载"按钮在本地模式下隐藏（文件已在本地文件系统，无需导入导出）
+- 拖拽排序在本地模式下禁用
 
 ## 本地模式下的操作清单
 
@@ -105,8 +118,11 @@ DocumentLibraryPanel 目前接收 `docs: Doc[]` 和 `folders: FolderRecord[]` pr
 | 浏览文件树 | ✅ | 复用现有文件夹树 UI |
 | 打开/编辑文件 | ✅ | 点击 → IPC 读取 → 编辑器；编辑 → 防抖 → IPC 写回 |
 | 搜索文件 | ✅ | 复用现有搜索框 |
-| 新建文件/文件夹 | ❌ | 本地模式暂不提供，用户可在 Finder 中操作 |
-| 删除文件 | ❌ | 同上 |
+| 新建文件 | ✅ | IPC → `fs.writeFile`，空 .md 文件，写入后刷新目录树 |
+| 新建文件夹 | ✅ | IPC → `fs.mkdir`，写入后刷新目录树 |
+| 删除文件 | ✅ | IPC → `fs.unlink`（先弹确认对话框），写入后刷新目录树 |
+| 删除文件夹 | ✅ | IPC → `fs.rmdir`（递归删除，先弹确认对话框），写入后刷新目录树 |
+| 重命名文件/文件夹 | ✅ | IPC → `fs.rename`，操作后刷新目录树 |
 | 拖拽排序 | ❌ | 文件系统顺序由系统决定 |
 | 导入/导出 | ❌ | 文件已在本地，无需导入导出 |
 
