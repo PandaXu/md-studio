@@ -260,7 +260,7 @@ const {
   undo: applyMarkdownUndo,
   redo: applyMarkdownRedo,
   reset: resetMarkdownHistory,
-} = useTextEditHistory(activeContent, { debounceMs: 320 })
+} = useTextEditHistory(currentActiveContent, { debounceMs: 320 })
 
 const layout = ref<LayoutMode>(loadStoredLayout())
 const { reading, setReading } = useAppReading()
@@ -269,7 +269,7 @@ const sidebarCollapsed = ref<boolean>(loadStoredSidebarCollapsed())
 
 const docLibraryPanelRef = ref<{ expandFolder?: (id: string) => void } | null>(null)
 
-const debouncedSource = ref<string>(activeContent.value)
+const debouncedSource = ref<string>(currentActiveContent.value)
 const previewHost = ref<HTMLElement | null>(null)
 
 const topError = ref<string | null>(null)
@@ -301,7 +301,7 @@ function flushMarkdownDebouncedSource() {
     clearTimeout(debounceTimer)
     debounceTimer = null
   }
-  debouncedSource.value = activeContent.value
+  debouncedSource.value = currentActiveContent.value
 }
 
 function onMarkdownHistoryUndo() {
@@ -321,14 +321,14 @@ function debounceSourceUpdate() {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     debounceTimer = null
-    debouncedSource.value = activeContent.value
+    debouncedSource.value = currentActiveContent.value
   }, 320)
 }
 
-watch(activeContent, debounceSourceUpdate, { flush: 'post' })
-watch(activeId, () => {
-  resetMarkdownHistory(activeContent.value)
-  debouncedSource.value = activeContent.value
+watch(currentActiveContent, debounceSourceUpdate, { flush: 'post' })
+watch(currentActiveId, () => {
+  resetMarkdownHistory(currentActiveContent.value)
+  debouncedSource.value = currentActiveContent.value
   void nextTick(() => {
     const host = previewHost.value
     if (host) host.scrollTop = 0
@@ -384,7 +384,7 @@ watch(reading, () => {
 })
 
 onMounted(() => {
-  debouncedSource.value = activeContent.value
+  debouncedSource.value = currentActiveContent.value
   void runMarkdownPipeline()
   window.addEventListener('resize', onWindowResizeDocSidebar)
   onWindowResizeDocSidebar()
