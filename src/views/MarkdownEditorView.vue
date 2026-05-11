@@ -202,6 +202,14 @@ const currentHasContent = computed(() => {
   return hasDocs.value
 })
 
+// 监听本地文件冲突提醒
+watch(
+  () => localWs.fileConflictWarning.value,
+  (msg) => {
+    if (msg) showImportBanner(msg)
+  },
+)
+
 // Mode switching
 function switchFileMode(next: 'local' | 'web') {
   if (next === fileMode.value) return

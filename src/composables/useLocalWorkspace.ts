@@ -77,6 +77,8 @@ export type LocalWorkspaceHandle = {
   hasItems: ComputedRef<boolean>
   treeMode: ComputedRef<boolean>
   hasWorkspace: ComputedRef<boolean>
+  fileConflictWarning: Ref<string | null>
+  clearConflictWarning(): void
   openFolder(): Promise<void>
   closeWorkspace(): Promise<void>
   refreshTree(): Promise<void>
@@ -127,10 +129,13 @@ export function useLocalWorkspace(): LocalWorkspaceHandle {
     if (!p) return
     workspacePath.value = p
     await refreshTree()
+    // 启动文件系统监听
+    try { await api?.watchStart(p) } catch { /* fs.watch 不可用不影响核心功能 */ }
   }
 
   async function closeWorkspace() {
     await flush()
+    try { await api?.watchStop() } catch { /* 忽略 */ }
     workspacePath.value = null
     docs.value = []
     folders.value = []
@@ -256,6 +261,11 @@ export function useLocalWorkspace(): LocalWorkspaceHandle {
 
   // 文件变更监听
   let unsubscribeFileWatch: (() => void) | null = null
+  const fileConflictWarning = ref<string | null>(null)
+
+  function clearConflictWarning() {
+    fileConflictWarning.value = null
+  }
 
   watch(workspacePath, (newPath, oldPath) => {
     if (oldPath && unsubscribeFileWatch) {
@@ -263,12 +273,20 @@ export function useLocalWorkspace(): LocalWorkspaceHandle {
       unsubscribeFileWatch = null
     }
     if (newPath && api) {
-      unsubscribeFileWatch = api.onFileChanged((_event) => {
+      unsubscribeFileWatch = api.onFileChanged((event) => {
+        // 全量刷新目录树
         refreshTree().then(() => {
-          if (activeId.value && !dirty && docs.value.some((d) => d.id === activeId.value)) {
-            api.readFile(activeId.value).then((content) => {
-              activeContent.value = content
-            })
+          // 当前打开的文件被外部修改了
+          if (activeId.value && event.path === activeId.value) {
+            if (!dirty) {
+              // 本地无未保存修改 → 静默重新加载
+              api.readFile(activeId.value).then((content) => {
+                activeContent.value = content
+              })
+            } else {
+              // 本地有未保存修改 → 提示冲突
+              fileConflictWarning.value = `「${event.path}」已被外部修改，你当前的编辑内容不会被覆盖`
+            }
           }
         })
       })
@@ -286,6 +304,8 @@ export function useLocalWorkspace(): LocalWorkspaceHandle {
     hasItems,
     treeMode,
     hasWorkspace,
+    fileConflictWarning,
+    clearConflictWarning,
     openFolder,
     closeWorkspace,
     refreshTree,

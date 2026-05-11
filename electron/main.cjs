@@ -116,6 +116,49 @@ function registerIpcHandlers() {
     if (!fs.existsSync(newDir)) fs.mkdirSync(newDir, { recursive: true })
     fs.renameSync(fullOld, fullNew)
   })
+
+  // --- 文件系统监听 ---
+  let fileWatcher = null
+  let watchDebounceTimer = null
+
+  ipcMain.handle('fs:watch-start', (_event, folderPath) => {
+    workspaceRoot = folderPath
+    if (fileWatcher) fileWatcher.close()
+    try {
+      fileWatcher = fs.watch(folderPath, { recursive: true }, (_eventType, filename) => {
+        if (!filename) return
+        // 忽略隐藏文件和临时文件
+        if (filename.startsWith('.') || filename.endsWith('~')) return
+        // 防抖：短时间内多次变更合并为一次通知
+        if (watchDebounceTimer) clearTimeout(watchDebounceTimer)
+        watchDebounceTimer = setTimeout(() => {
+          watchDebounceTimer = null
+          const relPath = filename
+          const win = BrowserWindow.getAllWindows()[0]
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('fs:file-changed', {
+              path: relPath,
+              type: 'change',
+            })
+          }
+        }, 200)
+      })
+      fileWatcher.on('error', () => { /* 静默处理 */ })
+    } catch {
+      // fs.watch 失败不影响核心功能
+    }
+  })
+
+  ipcMain.handle('fs:watch-stop', () => {
+    if (watchDebounceTimer) {
+      clearTimeout(watchDebounceTimer)
+      watchDebounceTimer = null
+    }
+    if (fileWatcher) {
+      fileWatcher.close()
+      fileWatcher = null
+    }
+  })
 }
 
 // --- 窗口创建 ---

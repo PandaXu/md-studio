@@ -38,7 +38,9 @@ interface ElectronFileAPI {
   deleteFile(filePath: string): Promise<void>
   deleteFolder(folderPath: string): Promise<void>
   rename(oldPath: string, newPath: string): Promise<void>
-  onFileChanged(callback: (event: { path: string; type: 'change' | 'rename' | 'delete' }) => void): () => void
+  watchStart(folderPath: string): Promise<void>
+  watchStop(): Promise<void>
+  onFileChanged(callback: (event: { path: string; type: 'change' }) => void): () => void
 }
 
 interface Window {

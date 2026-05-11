@@ -30,6 +30,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   rename(oldPath, newPath) {
     return ipcRenderer.invoke('fs:rename', oldPath, newPath)
   },
+  watchStart(folderPath) {
+    return ipcRenderer.invoke('fs:watch-start', folderPath)
+  },
+  watchStop() {
+    return ipcRenderer.invoke('fs:watch-stop')
+  },
   onFileChanged(callback) {
     const handler = (_event, data) => callback(data)
     ipcRenderer.on('fs:file-changed', handler)
