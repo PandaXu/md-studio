@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
-const props = defineProps<{
+defineProps<{
   modelValue: 'local' | 'web'
   workspacePath: string | null
   isElectron: boolean
@@ -12,10 +10,7 @@ const emit = defineEmits<{
   selectFolder: []
 }>()
 
-const localDisabled = computed(() => !props.isElectron)
-
 function switchTo(value: 'local' | 'web') {
-  if (value === 'local' && localDisabled.value) return
   emit('update:modelValue', value)
 }
 </script>
@@ -32,13 +27,15 @@ function switchTo(value: 'local' | 'web') {
       v-if="modelValue === 'local' && !workspacePath"
       type="button"
       class="file-mode-open-btn"
-      @click="emit('selectFolder')"
+      :data-disabled="isElectron ? undefined : ''"
+      @click="isElectron ? emit('selectFolder') : undefined"
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
       </svg>
       打开文件夹
     </button>
+    <p v-if="modelValue === 'local' && !isElectron" class="file-mode-hint">需要 MD Studio 桌面应用才能使用本地模式</p>
 
     <div class="file-mode-segment" role="radiogroup" aria-label="文件管理模式">
       <button
@@ -47,8 +44,7 @@ function switchTo(value: 'local' | 'web') {
         class="file-mode-seg-btn"
         :class="{ active: modelValue === 'local' }"
         :aria-checked="modelValue === 'local'"
-        :disabled="localDisabled"
-        :title="localDisabled ? '需在 MD Studio 桌面应用中启用' : '本地文件系统模式'"
+        :title="isElectron ? '本地文件系统模式' : '本地文件系统模式（需桌面应用）'"
         @click="switchTo('local')"
       >
         本地
@@ -113,7 +109,12 @@ function switchTo(value: 'local' | 'web') {
   cursor: pointer;
 }
 
-.file-mode-open-btn:hover {
+.file-mode-open-btn[data-disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.file-mode-open-btn:hover:not([data-disabled]) {
   background: var(--doc-panel-hover);
   color: var(--doc-panel-text);
 }
@@ -150,5 +151,13 @@ function switchTo(value: 'local' | 'web') {
 .file-mode-seg-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.file-mode-hint {
+  margin: 0;
+  font-size: 0.65rem;
+  color: var(--doc-panel-muted);
+  text-align: center;
+  opacity: 0.7;
 }
 </style>
