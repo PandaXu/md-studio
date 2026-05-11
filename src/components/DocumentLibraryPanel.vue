@@ -4,6 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Doc, FolderRecord } from '@/markdown/documentStore'
 import DocumentImportMenu, { type DocLibraryImportPayload } from '@/components/DocumentImportMenu.vue'
 import AppModeNav from '@/components/AppModeNav.vue'
+import FileModeSwitch from '@/components/FileModeSwitch.vue'
 import FolderOutlineIcon from '@/components/icons/FolderOutlineIcon.vue'
 import type { LibraryReorderPayload } from '@/composables/useDocumentLibrary'
 import { compareLibrarySiblings, effectiveDocParentId, validFolderIdSet } from '@/markdown/librarySort'
@@ -25,6 +26,9 @@ const props = defineProps<{
   hasLibraryItems: boolean
   treeMode: boolean
   downloadActiveDisabled: boolean
+  fileMode: 'local' | 'web'
+  workspacePath: string | null
+  isElectron: boolean
 }>()
 
 const emit = defineEmits<{
@@ -47,7 +51,11 @@ const emit = defineEmits<{
   imported: [payload: DocLibraryImportPayload]
   importError: [message: string]
   newFolder: [parentId: string | null, title: string]
+  'update:fileMode': [value: 'local' | 'web']
+  selectLocalFolder: []
 }>()
+
+const isLocalMode = computed(() => props.fileMode === 'local')
 
 const importMenuRef = ref<InstanceType<typeof DocumentImportMenu> | null>(null)
 
@@ -686,12 +694,14 @@ defineExpose({ expandFolder })
       <div class="doc-panel-toolbar-icons">
         <AppModeNav class="doc-panel-toolbar-mode" />
         <DocumentImportMenu
+          v-if="!isLocalMode"
           ref="importMenuRef"
           menu-id="doc-library-import"
           @imported="(p) => emit('imported', p)"
           @error="(msg) => emit('importError', msg)"
         />
         <button
+          v-if="!isLocalMode"
           type="button"
           class="doc-toolbar-icon-btn"
           :disabled="downloadActiveDisabled"
@@ -1244,6 +1254,14 @@ defineExpose({ expandFolder })
         </div>
       </div>
     </Teleport>
+
+    <FileModeSwitch
+      :model-value="fileMode"
+      :workspace-path="workspacePath"
+      :is-electron="isElectron"
+      @update:model-value="(v: 'local' | 'web') => emit('update:fileMode', v)"
+      @select-folder="emit('selectLocalFolder')"
+    />
   </aside>
 </template>
 
