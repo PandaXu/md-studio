@@ -163,7 +163,14 @@ function persistFileMode(mode: 'local' | 'web') {
 }
 
 const fileMode = ref<'local' | 'web'>(loadStoredFileMode())
-const isElectron = computed(() => typeof window !== 'undefined' && !!window.electronAPI)
+const isElectron = computed(() => {
+  if (typeof window === 'undefined') return false
+  // preload 成功注入时优先使用
+  if (window.electronAPI) return true
+  // 降级：通过 User-Agent 检测（Electron 渲染进程必定包含 "Electron"）
+  if (typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron')) return true
+  return false
+})
 
 const localWs = useLocalWorkspace()
 
@@ -191,6 +198,10 @@ function switchFileMode(next: 'local' | 'web') {
 }
 
 async function onSelectLocalFolder() {
+  if (!window.electronAPI) {
+    importBanner.value = 'Preload 脚本未加载，请尝试重启应用'
+    return
+  }
   await localWs.openFolder()
   if (localWs.hasItems.value && !localWs.activeId.value) {
     const first = localWs.docs.value[0]
