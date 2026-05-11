@@ -273,11 +273,27 @@ const docLibraryPanelRef = ref<{ expandFolder?: (id: string) => void } | null>(n
 const debouncedSource = ref<string>(currentActiveContent.value)
 const previewHost = ref<HTMLElement | null>(null)
 const previewScrollEl = ref<HTMLElement | null>(null)
-const editorPaneEl = ref<HTMLElement | null>(null)
+const sourceEditorRef = ref<InstanceType<typeof SourceEditor> | null>(null)
 
 // 滚动同步：仅左右并列视图启用
 const isScrollSyncActive = computed(() => layout.value === 'split')
-const scrollSync = useScrollSync(editorPaneEl, previewScrollEl, isScrollSyncActive)
+const scrollSync = useScrollSync(
+  (onScroll) => {
+    const ed = sourceEditorRef.value?.getEditor()
+    if (!ed) return () => {}
+    const disposable = ed.onDidScrollChange(() => {
+      const scrollTop = ed.getScrollTop()
+      const scrollHeight = ed.getScrollHeight()
+      // Monaco 不直接暴露 viewport height，从 DOM 获取
+      const viewEl = document.querySelector('.monaco-scrollable-element') as HTMLElement | null
+      const clientHeight = viewEl?.clientHeight ?? scrollHeight
+      onScroll({ scrollTop, scrollHeight, clientHeight })
+    })
+    return () => disposable.dispose()
+  },
+  previewScrollEl,
+  isScrollSyncActive,
+)
 
 const topError = ref<string | null>(null)
 const importBanner = ref<string | null>(null)
@@ -783,10 +799,11 @@ async function onDuplicate(id: string) {
       </header>
 
       <main v-if="currentHasContent" class="main" :class="`layout-${layout}`">
-        <section ref="editorPaneEl" v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
+        <section v-show="layout !== 'preview'" class="pane editor-pane" aria-label="源码编辑">
           <h2 class="pane-title">源码</h2>
           <div class="pane-body">
             <SourceEditor
+              ref="sourceEditorRef"
               v-if="layout === 'split' || (layout === 'code' && editMode === 'raw')"
               v-model="currentActiveContent"
               language="markdown"
