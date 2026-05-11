@@ -9,6 +9,7 @@ import type { DocLibraryImportPayload } from '@/components/DocumentImportMenu.vu
 import EditorHistoryButtons from '@/components/EditorHistoryButtons.vue'
 import { useAppReading } from '@/composables/useAppReading'
 import { useDocumentLibrary, type LibraryReorderPayload } from '@/composables/useDocumentLibrary'
+import { useLocalWorkspace } from '@/composables/useLocalWorkspace'
 import { useTextEditHistory } from '@/composables/useTextEditHistory'
 import { renderMermaidBlocksIn } from '@/markdown/mermaidBlocks'
 import { renderMarkdownToHtml } from '@/markdown/render'
@@ -141,7 +142,6 @@ const {
   activeId,
   activeContent,
   searchQuery,
-  filteredDocs,
   docs,
   folders,
   treeMode,
@@ -149,11 +149,86 @@ const {
   hasDocs,
 } = lib
 
+const FILE_MODE_KEY = 'markdown-editor-file-mode'
+
+function loadStoredFileMode(): 'local' | 'web' {
+  try {
+    const v = localStorage.getItem(FILE_MODE_KEY)
+    if (v === 'local' || v === 'web') return v
+  } catch {}
+  return 'web'
+}
+function persistFileMode(mode: 'local' | 'web') {
+  try { localStorage.setItem(FILE_MODE_KEY, mode) } catch {}
+}
+
+const fileMode = ref<'local' | 'web'>(loadStoredFileMode())
+const isElectron = computed(() => typeof window !== 'undefined' && !!window.electronAPI)
+
+const localWs = useLocalWorkspace()
+
+// Computed properties that pick the correct data source based on mode
+const currentDocs = computed(() => fileMode.value === 'local' ? localWs.docs.value : docs.value)
+const currentFolders = computed(() => fileMode.value === 'local' ? localWs.folders.value : folders.value)
+const currentActiveId = computed(() => fileMode.value === 'local' ? localWs.activeId.value : activeId.value)
+const currentHasItems = computed(() => fileMode.value === 'local' ? localWs.hasItems.value : hasLibraryItems.value)
+const currentTreeMode = computed(() => fileMode.value === 'local' ? localWs.treeMode.value : treeMode.value)
+const currentActiveContent = computed({
+  get: () => fileMode.value === 'local' ? localWs.activeContent.value : activeContent.value,
+  set: (v: string) => {
+    if (fileMode.value === 'local') localWs.activeContent.value = v
+    else activeContent.value = v
+  },
+})
+
+// Mode switching
+function switchFileMode(next: 'local' | 'web') {
+  if (next === fileMode.value) return
+  if (fileMode.value === 'web') lib.flush()
+  else localWs.flush()
+  fileMode.value = next
+  persistFileMode(next)
+}
+
+async function onSelectLocalFolder() {
+  await localWs.openFolder()
+  if (localWs.hasItems.value && !localWs.activeId.value) {
+    const first = localWs.docs.value[0]
+    if (first) await localWs.setActive(first.id)
+  }
+}
+
+// Local mode operation proxies
+async function onLocalNewDoc() {
+  const folderId = localWs.activeId.value
+    ? localWs.docs.value.find((d: any) => d.id === localWs.activeId.value)?.folderId ?? null
+    : null
+  await localWs.createDoc(folderId)
+}
+
+async function onLocalNewFolder(parentId: string | null, title: string) {
+  await localWs.createFolder(parentId, title)
+}
+
+async function onLocalDelete(id: string) {
+  await localWs.deleteDoc(id)
+}
+
+async function onLocalFolderDelete(id: string) {
+  await localWs.deleteFolder(id)
+}
+
+async function onLocalRename(id: string, newTitle: string) {
+  await localWs.renameDoc(id, newTitle)
+}
+
+async function onLocalFolderRename(id: string, newTitle: string) {
+  await localWs.renameFolder(id, newTitle)
+}
+
 async function onLibraryReorder(payload: LibraryReorderPayload) {
   await lib.reorderLibraryItem(payload)
 }
-
-const displayPanelDocs = computed(() => (treeMode.value ? docs.value : filteredDocs.value))
 
 const {
   canUndo: canUndoEdit,
@@ -517,24 +592,29 @@ async function onDuplicate(id: string) {
       <DocumentLibraryPanel
         ref="docLibraryPanelRef"
         v-model:search-query="searchQuery"
-        :folders="folders"
-        :docs="displayPanelDocs"
-        :tree-mode="treeMode"
-        :has-library-items="hasLibraryItems"
-        :active-id="activeId"
-        :download-active-disabled="!activeId"
-        @select="onSelect"
-        @rename="onRename"
+        :file-mode="fileMode"
+        :workspace-path="localWs.workspacePath.value"
+        :is-electron="isElectron"
+        :folders="currentFolders"
+        :docs="currentDocs"
+        :tree-mode="currentTreeMode"
+        :has-library-items="currentHasItems"
+        :active-id="currentActiveId"
+        :download-active-disabled="!currentActiveId"
+        @update:file-mode="switchFileMode"
+        @select-local-folder="onSelectLocalFolder"
+        @select="(id: string) => fileMode === 'local' ? localWs.setActive(id) : onSelect(id)"
+        @rename="(id: string, t: string) => fileMode === 'local' ? onLocalRename(id, t) : onRename(id, t)"
         @unlock-title="onUnlock"
-        @delete="onDelete"
+        @delete="(id: string) => fileMode === 'local' ? onLocalDelete(id) : onDelete(id)"
         @duplicate="onDuplicate"
         @download="downloadDocAsMd"
         @download-active="downloadActiveDocAsMd"
-        @new-doc="onNewDoc"
-        @new-folder="onNewFolder"
+        @new-doc="fileMode === 'local' ? onLocalNewDoc() : onNewDoc()"
+        @new-folder="(pid: string | null, t: string) => fileMode === 'local' ? onLocalNewFolder(pid, t) : onNewFolder(pid, t)"
         @new-doc-in-folder="onNewDocInFolder"
-        @folder-rename="onFolderRename"
-        @folder-delete="onFolderDelete"
+        @folder-rename="(id: string, t: string) => fileMode === 'local' ? onLocalFolderRename(id, t) : onFolderRename(id, t)"
+        @folder-delete="(id: string) => fileMode === 'local' ? onLocalFolderDelete(id) : onFolderDelete(id)"
         @folder-download-zip="onFolderDownloadZip"
         @move-doc="onMoveDoc"
         @move-folder-into="onMoveFolderInto"
@@ -672,14 +752,14 @@ async function onDuplicate(id: string) {
           <div class="pane-body">
             <SourceEditor
               v-if="layout === 'split' || (layout === 'code' && editMode === 'raw')"
-              v-model="activeContent"
+              v-model="currentActiveContent"
               language="markdown"
               :editor-theme="monacoEditorTheme"
             />
             <TuiEditor
               v-else-if="layout === 'code'"
               :key="activeId ?? 'no-doc'"
-              v-model="activeContent"
+              v-model="currentActiveContent"
               :chart-theme="MARKDOWN_MERMAID_THEME"
               :reading="reading"
             />
@@ -711,7 +791,7 @@ async function onDuplicate(id: string) {
 
       <FloatingSourceEditor
         ref="floatingEditorRef"
-        v-model="activeContent"
+        v-model="currentActiveContent"
         language="markdown"
         title="Markdown 源码编辑"
         :editor-theme="monacoEditorTheme"
