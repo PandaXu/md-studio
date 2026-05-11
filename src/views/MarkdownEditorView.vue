@@ -284,9 +284,9 @@ const scrollSync = useScrollSync(
     const disposable = ed.onDidScrollChange(() => {
       const scrollTop = ed.getScrollTop()
       const scrollHeight = ed.getScrollHeight()
-      // Monaco 不直接暴露 viewport height，从 DOM 获取
-      const viewEl = document.querySelector('.monaco-scrollable-element') as HTMLElement | null
-      const clientHeight = viewEl?.clientHeight ?? scrollHeight
+      const layoutInfo = ed.getLayoutInfo()
+      const clientHeight = layoutInfo?.height ?? 0
+      if (scrollHeight <= 0 || clientHeight <= 0) return
       onScroll({ scrollTop, scrollHeight, clientHeight })
     })
     return () => disposable.dispose()
