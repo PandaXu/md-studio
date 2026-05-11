@@ -39,8 +39,6 @@ interface ElectronFileAPI {
   onFileChanged(callback: (event: { path: string; type: 'change' | 'rename' | 'delete' }) => void): () => void
 }
 
-declare global {
-  interface Window {
-    electronAPI?: ElectronFileAPI
-  }
+interface Window {
+  electronAPI?: ElectronFileAPI
 }
