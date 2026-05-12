@@ -1,6 +1,6 @@
 # MD Studio
 
-基于 **Vue 3 + Vite** 的本地文档工作台：在浏览器中管理 Markdown 文档库、实时预览与导出，并提供独立的 **Mermaid** 编辑页。默认进入 **Markdown**（`/markdown`），侧栏可一键切到 **Mermaid**（`/mermaid`）。
+基于 **Vue 3 + Vite** 的本地文档工作台：在浏览器中管理 Markdown 文档库、实时预览与导出，并提供独立的 **Mermaid** 编辑页。macOS 桌面应用支持**本地文件系统模式**，直接操作磁盘上的 Markdown 文件。默认进入 **Markdown**（`/markdown`），侧栏可一键切到 **Mermaid**（`/mermaid`）。
 
 ## 界面预览
 
@@ -42,11 +42,24 @@
 - **阅读主题**：全站 `light` / `dark`（`localStorage` 键 `md-studio-reading`，兼容旧键迁移），影响 `data-reading`、侧栏、Markdown 预览、WYSIWYG、Mermaid 等
 - 路由：`/` 重定向至 `/markdown`；Markdown 与 Mermaid 共用壳层与侧栏导航风格
 
+### 本地文件系统模式（macOS 桌面应用专属）
+
+在 Electron 桌面应用中，文件管理面板底部提供 **本地 / Web** 模式切换：
+
+- **打开工作区**：选择本地文件夹作为工作区，自动扫描所有 `.md` 文件并展示目录树
+- **直接读写**：编辑内容实时保存到磁盘文件，无需导入导出
+- **文件管理**：新建/重命名/删除文件和文件夹，操作直接反映到文件系统
+- **时间戳**：文档列表显示文件的真实修改时间
+- **外部变更监听**：文件被其他程序修改时自动刷新目录树；当前编辑文件有未保存修改时弹出冲突提醒
+- **双向滚动同步**：左右并列布局下，编辑区与预览区滚动位置实时同步
+- **Web 模式**：浏览器内仍使用 IndexedDB 管理文档，两种模式数据完全隔离
+
 ## 需求与规格
 
 - Mermaid：[docs/superpowers/specs/2026-05-06-mermaid-editor-design.md](docs/superpowers/specs/2026-05-06-mermaid-editor-design.md)
 - Markdown：[docs/superpowers/specs/2026-05-06-markdown-editor-design.md](docs/superpowers/specs/2026-05-06-markdown-editor-design.md)
 - 文档库面板：[docs/superpowers/specs/2026-05-08-document-library-panel-design.md](docs/superpowers/specs/2026-05-08-document-library-panel-design.md)
+- 本地文件模式：[docs/superpowers/specs/2026-05-11-local-file-mode-design.md](docs/superpowers/specs/2026-05-11-local-file-mode-design.md)
 
 ## 本地运行
 
