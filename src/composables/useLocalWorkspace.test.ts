@@ -49,18 +49,32 @@ describe('buildLocalTree', () => {
     expect(docs[1].folderId).toBe('docs/guides')
   })
 
-  it('strips .md extension for title', () => {
+  it('strips .md and .html extension for title', () => {
     const nodes: FileNode[] = [
       { name: 'My Great Post.md', path: 'My Great Post.md', kind: 'file' },
+      { name: 'index.html', path: 'index.html', kind: 'file' },
     ]
     const { docs } = buildLocalTree(nodes)
     expect(docs[0].title).toBe('My Great Post')
+    expect(docs[1].title).toBe('index')
   })
 
-  it('skips non-md files', () => {
+  it('includes .html files alongside .md', () => {
+    const nodes: FileNode[] = [
+      { name: 'page.html', path: 'page.html', kind: 'file' },
+      { name: 'readme.md', path: 'readme.md', kind: 'file' },
+    ]
+    const { docs } = buildLocalTree(nodes)
+    expect(docs).toHaveLength(2)
+    expect(docs[0].id).toBe('page.html')
+    expect(docs[1].id).toBe('readme.md')
+  })
+
+  it('skips non-md/non-html files', () => {
     const nodes: FileNode[] = [
       { name: 'image.png', path: 'image.png', kind: 'file' },
       { name: 'readme.md', path: 'readme.md', kind: 'file' },
+      { name: 'style.css', path: 'style.css', kind: 'file' },
     ]
     const { docs } = buildLocalTree(nodes)
     expect(docs).toHaveLength(1)

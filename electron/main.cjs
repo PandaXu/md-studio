@@ -33,7 +33,7 @@ function scanDir(dirPath) {
       if (EXCLUDED_DIRS.has(entry.name)) continue
       const children = scanDir(full)
       result.push({ name: entry.name, path: rel, kind: 'dir', children })
-    } else if (entry.isFile() && /\.md$/i.test(entry.name)) {
+    } else if (entry.isFile() && /\.(md|html)$/i.test(entry.name)) {
       const stat = fs.statSync(full)
       result.push({
         name: entry.name,

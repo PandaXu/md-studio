@@ -9,7 +9,7 @@ function dirname(p: string): string {
 }
 
 export function fileNodeToDoc(node: FileNode): Doc {
-  const title = node.name.replace(/\.md$/i, '')
+  const title = node.name.replace(/\.(md|html)$/i, '')
   return {
     id: node.path,
     folderId: null, // 后续在 buildTree 中由父目录覆盖
@@ -43,7 +43,7 @@ export function buildLocalTree(nodes: FileNode[]): LocalTree {
 
   function walk(list: FileNode[], parentPath: string | null) {
     for (const node of list) {
-      if (node.kind === 'file' && /\.md$/i.test(node.name)) {
+      if (node.kind === 'file' && /\.(md|html)$/i.test(node.name)) {
         const doc = fileNodeToDoc(node)
         doc.folderId = parentPath
         docs.push(doc)

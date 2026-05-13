@@ -370,10 +370,34 @@ const readingPageClass = computed(() => (reading.value === 'light' ? 'reading-li
 
 const monacoEditorTheme = computed(() => (reading.value === 'dark' ? 'vs-dark' : 'vs'))
 
+// 当前文件类型检测
+const isHtmlFile = computed(() => /\.html$/i.test(currentActiveId.value ?? ''))
+const currentEditorLanguage = computed(() => isHtmlFile.value ? 'html' : 'markdown')
+
 function setEditMode(next: EditMode) { editMode.value = next; persistEditMode(next) }
 
 async function runMarkdownPipeline() {
   const seq = ++pipelineSeq
+  const host = previewHost.value
+  if (!host) return
+
+  if (isHtmlFile.value) {
+    // HTML 文件：直接消毒渲染，跳过 Markdown 转换
+    let clean: string
+    try {
+      clean = sanitizeMarkdownHtml(debouncedSource.value)
+    } catch (e) {
+      if (seq !== pipelineSeq) return
+      topError.value = e instanceof Error ? e.message : String(e)
+      return
+    }
+    if (seq !== pipelineSeq) return
+    topError.value = null
+    host.innerHTML = clean
+    return
+  }
+
+  // Markdown 文件：走完整渲染管线
   let raw: string
   try {
     raw = renderMarkdownToHtml(debouncedSource.value)
@@ -392,8 +416,6 @@ async function runMarkdownPipeline() {
   }
   if (seq !== pipelineSeq) return
   topError.value = null
-  const host = previewHost.value
-  if (!host) return
   host.innerHTML = clean
   await nextTick()
   if (seq !== pipelineSeq) return
@@ -814,7 +836,7 @@ async function onDuplicate(id: string) {
               ref="sourceEditorRef"
               v-if="layout === 'split' || (layout === 'code' && editMode === 'raw')"
               v-model="currentActiveContent"
-              language="markdown"
+              :language="currentEditorLanguage"
               :editor-theme="monacoEditorTheme"
             />
             <TuiEditor
