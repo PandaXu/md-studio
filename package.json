@@ -18,6 +18,8 @@
     "electron:build": "npm run build && electron-builder --mac"
   },
   "dependencies": {
+    "@milkdown/kit": "^7.21.1",
+    "@milkdown/vue": "^7.21.1",
     "dompurify": "^3.4.2",
     "fflate": "^0.8.2",
     "markdown-it": "^14.1.1",
@@ -25,7 +27,6 @@
     "markdown-it-task-lists": "^2.1.1",
     "mermaid": "^11.6.0",
     "monaco-editor": "^0.52.2",
-    "vditor": "^3.11.2",
     "vue": "^3.5.13",
     "vue-router": "^4.6.4"
   },

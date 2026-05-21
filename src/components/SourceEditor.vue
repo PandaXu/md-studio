@@ -93,5 +93,6 @@ defineExpose({
 .editor-host {
   height: 100%;
   min-height: 200px;
+  overflow: hidden;
 }
 </style>

@@ -2,7 +2,7 @@
 import '@/styles/editor-shell.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import SourceEditor from '@/components/SourceEditor.vue'
-import VditorEditor from '@/components/VditorEditor.vue'
+import MilkdownEditor from '@/components/MilkdownEditor.vue'
 import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
 import DocumentLibraryPanel from '@/components/DocumentLibraryPanel.vue'
 import type { DocLibraryImportPayload } from '@/components/DocumentImportMenu.vue'
@@ -444,7 +444,13 @@ onMounted(() => {
   void runMarkdownPipeline()
   window.addEventListener('resize', onWindowResizeDocSidebar)
   onWindowResizeDocSidebar()
-  void nextTick(() => { scrollSync.connect() })
+  // Connect scroll sync once SourceEditor ref is ready
+  const stopWatch = watch(sourceEditorRef, (ref) => {
+    if (ref) {
+      void nextTick(() => { scrollSync.connect() })
+      stopWatch()
+    }
+  }, { immediate: true })
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onWindowResizeDocSidebar)
@@ -839,7 +845,7 @@ async function onDuplicate(id: string) {
               :language="currentEditorLanguage"
               :editor-theme="monacoEditorTheme"
             />
-            <VditorEditor
+            <MilkdownEditor
               v-else-if="layout === 'code'"
               :key="(currentActiveId ?? 'no-doc') + '-' + fileMode"
               v-model="currentActiveContent"
