@@ -68,9 +68,32 @@ function getMermaidCodeBlocks(root: HTMLElement): HTMLElement[] {
         'pre code.language-mermaid',
         'pre code[class*="language-mermaid"]',
         'pre[data-language="mermaid"] code',
+        'pre[data-language="mermaid"]',
+        '.toastui-editor-md-code-block[data-language="mermaid"] pre code',
+        '.ProseMirror pre[data-language="mermaid"] code',
       ].join(','),
     ),
   )
+}
+
+// MutationObserver 防止 ProseMirror 重绘时移除注入的 mermaid 面板
+let mutationObserver: MutationObserver | null = null
+
+function startMutationObserver() {
+  if (!host.value) return
+  mutationObserver = new MutationObserver(() => {
+    // 检查是否有 mermaid code block 但缺少对应的渲染面板
+    const codeNodes = getMermaidCodeBlocks(host.value!)
+    let needsDecorate = false
+    for (const node of codeNodes) {
+      const pre = node.tagName === 'PRE' ? node : node.closest('pre')
+      if (pre && pre.nextElementSibling && pre.nextElementSibling.classList.contains('tui-mermaid-panel')) continue
+      needsDecorate = true
+      break
+    }
+    if (needsDecorate) queueDecorateMermaidBlocks()
+  })
+  mutationObserver.observe(host.value, { childList: true, subtree: true })
 }
 
 function queueDecorateMermaidBlocks() {
@@ -88,9 +111,11 @@ async function decorateMermaidBlocks() {
   const codeNodes = getMermaidCodeBlocks(host.value)
   for (let idx = 0; idx < codeNodes.length; idx += 1) {
     const codeNode = codeNodes[idx]
-    const pre = codeNode.closest('pre')
+    // codeNode 可能是 <code> 或 <pre> 元素
+    const pre = codeNode.tagName === 'PRE' ? codeNode : codeNode.closest('pre')
     if (!pre || !pre.parentElement) continue
-    const source = codeNode.textContent ?? ''
+    const source = (pre.textContent ?? '').trimEnd()
+    if (!source) continue
 
     const panel = document.createElement('div')
     panel.className = 'tui-mermaid-panel'
@@ -159,7 +184,19 @@ function mountToastEditor(initialMarkdown: string) {
     theme: toastTheme(),
   })
   wireChangeHandler()
-  queueDecorateMermaidBlocks()
+  // 等待编辑器完全加载后再装饰 mermaid 块
+  if (editor.eventEmitter) {
+    editor.on('load', () => {
+      queueDecorateMermaidBlocks()
+    })
+  }
+  // 作为兜底，多帧延迟后再尝试
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      queueDecorateMermaidBlocks()
+    })
+  })
+  startMutationObserver()
 }
 
 onMounted(() => {
@@ -191,6 +228,8 @@ watch(
   async () => {
     if (!host.value) return
     const md = editor?.getMarkdown() ?? props.modelValue
+    mutationObserver?.disconnect()
+    mutationObserver = null
     editor?.destroy()
     editor = null
     await new Promise<void>((r) => {
@@ -202,6 +241,8 @@ watch(
 
 onBeforeUnmount(() => {
   if (renderTimer) clearTimeout(renderTimer)
+  mutationObserver?.disconnect()
+  mutationObserver = null
   editor?.destroy()
   editor = null
 })
