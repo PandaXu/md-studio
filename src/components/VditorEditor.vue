@@ -22,14 +22,22 @@ onMounted(() => {
   initialValue = props.modelValue
 
   resizeObserver = new ResizeObserver(() => {
-    window.dispatchEvent(new Event('resize'))
+    const vditorEl = host.value?.querySelector('.vditor') as HTMLElement | null
+    if (vditorEl) {
+      const w = host.value!.clientWidth
+      vditorEl.style.width = `${w}px`
+      const toolbar = vditorEl.querySelector('.vditor-toolbar') as HTMLElement | null
+      if (toolbar) toolbar.style.width = `${w}px`
+      const content = vditorEl.querySelector('.vditor-content') as HTMLElement | null
+      if (content) content.style.width = `${w}px`
+      window.dispatchEvent(new Event('resize'))
+    }
   })
   resizeObserver.observe(host.value)
 
   try {
     vditor = new Vditor(host.value, {
       height: '100%',
-      width: '100%',
       mode: 'wysiwyg',
       placeholder: '开始编辑…',
       value: initialValue,
@@ -107,10 +115,18 @@ onBeforeUnmount(() => {
 
 :deep(.vditor) {
   width: 100% !important;
+  max-width: 100% !important;
+}
+
+:deep(.vditor .vditor-content),
+:deep(.vditor .vditor-reset) {
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 :deep(.vditor-toolbar) {
   flex-wrap: wrap;
+  width: 100% !important;
 }
 
 /* Dark 模式覆盖 */
