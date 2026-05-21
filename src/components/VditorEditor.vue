@@ -14,14 +14,22 @@ const emit = defineEmits<{
 const host = ref<HTMLElement | null>(null)
 let vditor: Vditor | null = null
 let syncing = false
+let resizeObserver: ResizeObserver | null = null
 
 onMounted(() => {
   if (!host.value) return
+  // 监听容器尺寸变化，触发编辑器内部自适应
+  resizeObserver = new ResizeObserver(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+  resizeObserver.observe(host.value)
+
   vditor = new Vditor(host.value, {
     height: '100%',
     mode: 'wysiwyg',
     placeholder: '开始编辑…',
     value: props.modelValue,
+    width: '100%',
     cache: { id: 'md-studio-vditor', enable: false },
     toolbar: [
       'undo', 'redo', '|',
@@ -56,6 +64,8 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
   vditor?.destroy()
   vditor = null
 })
