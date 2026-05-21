@@ -33,10 +33,10 @@ onMounted(() => {
     cache: { id: 'md-studio-vditor', enable: false },
     toolbar: [
       'undo', 'redo', '|',
-      'headings', 'bold', 'italic', 'strikethrough', '|',
+      'headings', 'bold', 'italic', 'strike', '|',
       'line', 'quote', 'list', 'ordered-list', 'check', 'code', 'inline-code', '|',
       'link', 'table', '|',
-      'outline', 'preview', 'fullscreen',
+      'preview', 'fullscreen',
     ],
     toolbarConfig: { pin: true },
     counter: { enable: true },
