@@ -22,6 +22,7 @@ onMounted(() => {
     mode: 'wysiwyg',
     placeholder: '开始编辑…',
     value: props.modelValue,
+    cache: { id: 'md-studio-vditor', enable: false },
     toolbar: [
       'undo', 'redo', '|',
       'headings', 'bold', 'italic', 'strikethrough', '|',
