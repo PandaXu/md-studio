@@ -2,7 +2,7 @@
 import '@/styles/editor-shell.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import SourceEditor from '@/components/SourceEditor.vue'
-import MilkdownEditor from '@/components/MilkdownEditor.vue'
+import VditorEditor from '@/components/VditorEditor.vue'
 import FloatingSourceEditor from '@/components/FloatingSourceEditor.vue'
 import DocumentLibraryPanel from '@/components/DocumentLibraryPanel.vue'
 import type { DocLibraryImportPayload } from '@/components/DocumentImportMenu.vue'
@@ -839,12 +839,10 @@ async function onDuplicate(id: string) {
               :language="currentEditorLanguage"
               :editor-theme="monacoEditorTheme"
             />
-            <MilkdownEditor
+            <VditorEditor
               v-else-if="layout === 'code'"
               :key="(currentActiveId ?? 'no-doc') + '-' + fileMode"
               v-model="currentActiveContent"
-              :chart-theme="MARKDOWN_MERMAID_THEME"
-              :reading="reading"
             />
           </div>
         </section>
