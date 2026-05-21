@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, watch } from 'vue'
+import { onBeforeUnmount, onMounted, watch, defineComponent, h } from 'vue'
 import { Editor, defaultValueCtx, rootCtx } from '@milkdown/kit/core'
 import { commonmark } from '@milkdown/kit/preset/commonmark'
 import { gfm } from '@milkdown/kit/preset/gfm'
@@ -23,7 +23,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-// --- Mermaid 渲染 ---
+// --- Mermaid 渲染工具 ---
 
 function normalizeMermaidCode(source: string): string {
   return `${source.replace(/\r\n/g, '\n').replace(/\s+$/, '')}\n`
@@ -60,7 +60,7 @@ function findCodeBlocks(root: HTMLElement): { pre: HTMLElement; source: string }
     'pre[data-language="mermaid"], .ProseMirror pre[data-language="mermaid"], pre code.language-mermaid',
   ))
     .map((el) => {
-      const pre = el.tagName === 'PRE' ? el : (el.closest('pre') as HTMLElement)
+      const pre = el.tagName === 'PRE' ? el : (el.closest('pre') as HTMLElement | null)
       return pre ? { pre, source: (pre.textContent ?? '').trimEnd() } : null
     })
     .filter(Boolean) as { pre: HTMLElement; source: string }[]
@@ -76,7 +76,6 @@ function decorateMermaidBlocks() {
 
     const panel = document.createElement('div')
     panel.className = 'mermaid-preview-panel'
-
     const out = document.createElement('div')
     out.className = 'mermaid-preview-out'
     const errEl = document.createElement('div')
@@ -101,7 +100,8 @@ function decorateMermaidBlocks() {
       textarea.value = source
       textarea.addEventListener('input', () => { void renderSvg(out, errEl, textarea.value) })
       textarea.addEventListener('blur', () => {
-        const md = editorCtx!.action(getMarkdown())
+        if (!editorInstance) return
+        const md = editorInstance.action(getMarkdown())
         const next = replaceMermaidBlockAt(md, blockIdx, textarea.value)
         if (next !== md) emit('update:modelValue', next)
         textarea.remove()
@@ -113,7 +113,7 @@ function decorateMermaidBlocks() {
   })
 }
 
-let editorCtx: ReturnType<ReturnType<typeof useEditor>['get']> = undefined as any
+let editorInstance: any = undefined
 let decorateTimer: ReturnType<typeof setTimeout> | null = null
 
 function queueDecorate() {
@@ -121,39 +121,48 @@ function queueDecorate() {
   decorateTimer = setTimeout(() => { decorateTimer = null; decorateMermaidBlocks() }, 200)
 }
 
-// --- Milkdown 编辑器 ---
+// --- 内层编辑器组件（在 MilkdownProvider 上下文中调用 useEditor）---
 
-const { get: getEditor, loading } = useEditor((root) => {
-  return Editor.make()
-    .config((ctx) => {
-      ctx.set(rootCtx, root)
-      ctx.set(defaultValueCtx, props.modelValue)
-      ctx.get(listenerCtx).markdownUpdated((_ctx, markdown) => {
-        emit('update:modelValue', markdown)
+const InnerEditor = defineComponent({
+  name: 'MilkdownInner',
+  setup(_props, { expose }) {
+    const { get, loading } = useEditor((root) =>
+      Editor.make()
+        .config((ctx) => {
+          ctx.set(rootCtx, root)
+          ctx.set(defaultValueCtx, props.modelValue)
+          ctx.get(listenerCtx).markdownUpdated((_ctx, markdown) => {
+            emit('update:modelValue', markdown)
+            queueDecorate()
+          })
+        })
+        .use(commonmark)
+        .use(gfm)
+        .use(history)
+        .use(listener),
+    )
+
+    onMounted(() => {
+      const ed = get()
+      if (ed) {
+        editorInstance = ed
         queueDecorate()
-      })
+      }
     })
-    .use(commonmark)
-    .use(gfm)
-    .use(history)
-    .use(listener)
+
+    expose({ get, loading })
+
+    return () => h(Milkdown)
+  },
 })
 
-onMounted(() => {
-  const editor = getEditor()
-  if (editor) {
-    editorCtx = editor
-    queueDecorate()
-  }
-})
-
-// 外部更新 modelValue 时同步编辑器
+// 外部 modelValue 变化时同步编辑器
 watch(() => props.modelValue, (v) => {
-  const editor = editorCtx
-  if (!editor || loading.value) return
-  const current = editor.action(getMarkdown())
+  const ed = editorInstance
+  if (!ed) return
+  const current = ed.action(getMarkdown())
   if (v !== current) {
-    editor.action(replaceAll(v))
+    ed.action(replaceAll(v))
     queueDecorate()
   }
 })
@@ -169,7 +178,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="milkdown-editor-wrap">
     <MilkdownProvider>
-      <Milkdown />
+      <InnerEditor />
     </MilkdownProvider>
   </div>
 </template>
@@ -186,7 +195,6 @@ onBeforeUnmount(() => {
   padding: 0 0.5rem;
 }
 
-/* Mermaid 预览面板 */
 .mermaid-preview-panel {
   margin: 0.5rem 0 1rem;
   border: 1px solid var(--border, #e5e7eb);
