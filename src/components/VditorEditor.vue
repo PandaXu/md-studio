@@ -69,5 +69,15 @@ onBeforeUnmount(() => {
 .vditor-editor-host {
   height: 100%;
   min-height: 240px;
+  width: 100%;
+  overflow: hidden;
+}
+
+:deep(.vditor) {
+  width: 100% !important;
+}
+
+:deep(.vditor-toolbar) {
+  flex-wrap: wrap;
 }
 </style>
