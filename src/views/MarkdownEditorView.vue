@@ -843,6 +843,7 @@ async function onDuplicate(id: string) {
               v-else-if="layout === 'code'"
               :key="(currentActiveId ?? 'no-doc') + '-' + fileMode"
               v-model="currentActiveContent"
+              :reading="reading"
             />
           </div>
         </section>

@@ -3,7 +3,10 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Vditor from 'vditor'
 import 'vditor/dist/index.css'
 
-const props = defineProps<{ modelValue: string }>()
+const props = defineProps<{
+  modelValue: string
+  reading?: 'light' | 'dark'
+}>()
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
@@ -54,6 +57,14 @@ onMounted(() => {
     // Vditor 初始化失败（如 DOM 已不存在）静默处理
   }
 })
+
+watch(
+  () => props.reading,
+  (theme) => {
+    if (!vditor || !ready) return
+    vditor.setTheme(theme === 'dark' ? 'dark' : 'classic')
+  },
+)
 
 watch(
   () => props.modelValue,
