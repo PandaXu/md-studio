@@ -11,10 +11,12 @@ const host = ref<HTMLElement | null>(null)
 let vditor: Vditor | null = null
 let syncing = false
 let ready = false
+let initialValue = ''
 let resizeObserver: ResizeObserver | null = null
 
 onMounted(() => {
   if (!host.value) return
+  initialValue = props.modelValue
 
   resizeObserver = new ResizeObserver(() => {
     window.dispatchEvent(new Event('resize'))
@@ -27,7 +29,7 @@ onMounted(() => {
       width: '100%',
       mode: 'wysiwyg',
       placeholder: '开始编辑…',
-      value: props.modelValue,
+      value: initialValue,
       cache: { id: `md-studio-vditor-${Date.now()}`, enable: false },
       toolbar: [
         'undo', 'redo', '|',
@@ -40,7 +42,8 @@ onMounted(() => {
       counter: { enable: true },
       outline: { enable: false } as any,
       input(value) {
-        if (syncing) return
+        if (!ready || syncing) return
+        if (value === initialValue) return
         emit('update:modelValue', value)
       },
       after() {
