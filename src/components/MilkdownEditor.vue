@@ -99,14 +99,17 @@ onBeforeUnmount(() => {
 
 :deep(.milkdown) {
   min-height: 240px;
-  --crepe-font-default: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-  --crepe-font-code: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  --crepe-font-default: -apple-system, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, "PingFang SC", "Microsoft YaHei", STHeiti, sans-serif;
+  --crepe-font-code: "SF Mono", Monaco, Menlo, Consolas, "Ubuntu Mono", "Liberation Mono", "DejaVu Sans Mono", "Courier New", monospace;
+  --crepe-font-title: -apple-system, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, "PingFang SC", "Microsoft YaHei", STHeiti, sans-serif;
 
   font-family: var(--crepe-font-default);
-  font-size: 14px;
+  font-size: 0.9375rem;
   line-height: 1.7;
-  color: #37352f;
+  color: rgb(44, 44, 43);
   background: #fff;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
 }
 
 :deep(.milkdown .ProseMirror) {
