@@ -1,0 +1,11 @@
+@import './prosemirror.css';
+@import './reset.css';
+@import './block-edit.css';
+@import './cursor.css';
+@import './link-tooltip.css';
+@import './list-item.css';
+@import './placeholder.css';
+@import './toolbar.css';
+@import './table.css';
+@import './diff.css';
+@import './frame-theme.css';
