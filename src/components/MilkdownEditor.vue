@@ -114,6 +114,158 @@ onBeforeUnmount(() => {
   padding: 0.5rem 1rem;
 }
 
+/* ---- Content styles matching markdown preview ---- */
+:deep(.milkdown .ProseMirror h1) {
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.25rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.28;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+:deep(.milkdown .ProseMirror h2) {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+:deep(.milkdown .ProseMirror h3) {
+  margin: 1.25rem 0 0.4rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+:deep(.milkdown .ProseMirror h4),
+:deep(.milkdown .ProseMirror h5),
+:deep(.milkdown .ProseMirror h6) {
+  margin: 1rem 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+:deep(.milkdown .ProseMirror h2:first-child),
+:deep(.milkdown .ProseMirror h1 + h2) {
+  margin-top: 0.25rem;
+}
+
+:deep(.milkdown .ProseMirror p) {
+  margin: 0 0 0.5rem;
+}
+
+:deep(.milkdown .ProseMirror p:last-child) {
+  margin-bottom: 0;
+}
+
+:deep(.milkdown .ProseMirror blockquote) {
+  margin: 0.5rem 0;
+  padding: 0.25rem 0 0.25rem 0.8rem;
+  border-left: 3px solid rgba(0, 0, 0, 0.1);
+  color: #9b9a97;
+}
+
+:deep(.milkdown .ProseMirror blockquote p) {
+  margin: 0.25rem 0;
+}
+
+:deep(.milkdown .ProseMirror hr) {
+  margin: 1rem 0;
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+:deep(.milkdown .ProseMirror ul),
+:deep(.milkdown .ProseMirror ol) {
+  margin: 0.25rem 0 0.5rem;
+  padding-left: 1.35rem;
+}
+
+:deep(.milkdown .ProseMirror li) {
+  margin: 0.15rem 0;
+}
+
+:deep(.milkdown .ProseMirror li > p) {
+  margin: 0.25rem 0;
+}
+
+:deep(.milkdown .ProseMirror ul ul),
+:deep(.milkdown .ProseMirror ol ol),
+:deep(.milkdown .ProseMirror ul ol),
+:deep(.milkdown .ProseMirror ol ul) {
+  margin: 0.2rem 0 0.3rem;
+}
+
+:deep(.milkdown .ProseMirror pre) {
+  margin: 0.5rem 0;
+  background: #f7f6f3;
+  padding: 0.75rem 0.85rem;
+  border-radius: 4px;
+  overflow: auto;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+:deep(.milkdown .ProseMirror code) {
+  font-family: var(--crepe-font-code);
+  font-size: 0.9em;
+}
+
+:deep(.milkdown .ProseMirror p code),
+:deep(.milkdown .ProseMirror li code),
+:deep(.milkdown .ProseMirror td code),
+:deep(.milkdown .ProseMirror th code) {
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  background: #f7f6f3;
+  font-size: 0.88em;
+  color: #e5484d;
+}
+
+:deep(.milkdown .ProseMirror pre code) {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: inherit;
+  color: inherit;
+}
+
+:deep(.milkdown .ProseMirror a) {
+  color: var(--accent, #0969da);
+}
+
+:deep(.milkdown .ProseMirror table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+:deep(.milkdown .ProseMirror th),
+:deep(.milkdown .ProseMirror td) {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0.35rem 0.5rem;
+  vertical-align: top;
+}
+
+:deep(.milkdown .ProseMirror th) {
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+:deep(.milkdown .ProseMirror img) {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Hide Crepe's language label on code blocks */
+:deep(.milkdown .ProseMirror pre[data-language]::before) {
+  display: none;
+}
+
 /* ---- Mermaid widget ---- */
 :deep(.milkdown-mermaid-widget) {
   margin: 0.5rem 0;
@@ -178,6 +330,59 @@ onBeforeUnmount(() => {
 
   color: #e6e6e6;
   background: #202020;
+}
+
+[data-theme="dark"] :deep(.milkdown .ProseMirror h1),
+[data-theme="dark"] :deep(.milkdown .ProseMirror h2),
+[data-theme="dark"] :deep(.milkdown .ProseMirror h3),
+[data-theme="dark"] :deep(.milkdown .ProseMirror h4),
+[data-theme="dark"] :deep(.milkdown .ProseMirror h5),
+[data-theme="dark"] :deep(.milkdown .ProseMirror h6),
+[data-theme="dark"] :deep(.milkdown .ProseMirror p),
+[data-theme="dark"] :deep(.milkdown .ProseMirror li),
+[data-theme="dark"] :deep(.milkdown .ProseMirror td),
+[data-theme="dark"] :deep(.milkdown .ProseMirror th) {
+  color: #e6e6e6;
+}
+
+[data-theme="dark"] :deep(.milkdown .ProseMirror h1) {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] :deep(.milkdown .ProseMirror hr) {
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] :deep(.milkdown .ProseMirror blockquote) {
+  border-left-color: rgba(255, 255, 255, 0.15);
+  color: #aaa;
+}
+
+[data-theme="dark"] :deep(.milkdown .ProseMirror pre) {
+  background: #191919;
+}
+
+[data-theme="dark"] :deep(.milkdown .ProseMirror p code),
+[data-theme="dark"] :deep(.milkdown .ProseMirror li code),
+[data-theme="dark"] :deep(.milkdown .ProseMirror td code),
+[data-theme="dark"] :deep(.milkdown .ProseMirror th code) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f87171;
+}
+
+[data-theme="dark"] :deep(.milkdown .ProseMirror pre code) {
+  background: transparent;
+  color: inherit;
+}
+
+[data-theme="dark"] :deep(.milkdown .ProseMirror table),
+[data-theme="dark"] :deep(.milkdown .ProseMirror th),
+[data-theme="dark"] :deep(.milkdown .ProseMirror td) {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] :deep(.milkdown .ProseMirror th) {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 [data-theme="dark"] :deep(.milkdown-mermaid-widget) {
